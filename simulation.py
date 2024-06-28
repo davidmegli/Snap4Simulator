@@ -15,7 +15,7 @@ def simulate():
     carLength = 5 #5m
     startingPosition = 0
     timeStep = 2 #seconds
-    sectorsPerRoad = 6
+    sectorsPerRoad = 10
     roadLength = 1000 #meters
     road = Road(0, roadLength, 1, 50/3.6) #id, length, vehicleDistance, speedLimit
     roadHistory = RoadHistory(road, roadLength / sectorsPerRoad) #road, sectorLength

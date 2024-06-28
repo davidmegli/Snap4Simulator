@@ -6,9 +6,10 @@ from map import Road
 import json
 
 class RoadState:
-    def __init__(self, time, vehiclesPerSector, numSectors):
+    def __init__(self, time, vehiclesPerSector, densityPerSector, numSectors):
         self.time = time
         self.vehiclesPerSector = vehiclesPerSector
+        self.densityPerSector = densityPerSector
         self.numSectors = numSectors
 
 class RoadHistory:
@@ -19,14 +20,21 @@ class RoadHistory:
 
     def saveState(self, road, time): #Given the time, I save the state of the road, saving the number of vehicles in each sector
         vehiclesPerSector = []
+        densityPerSector = []
         for i in range(0, int(road.length), int(self.sectorLength)):
             maxpos = i + self.sectorLength if i + self.sectorLength <= road.length else int(road.length)
             if int(road.length) - i < self.sectorLength*3/2: #in case the last sector is too short
                 maxpos = int(road.length)
+            vehicles = self.road.vehiclesAt(i, maxpos)
+            occupiedSpace = 0
+            for v in vehicles:
+                occupiedSpace += v.length
+                occupiedSpace += self.road.vehicleDistance
             vehiclesPerSector.append(len(road.vehiclesAt(i, maxpos)))
+            densityPerSector.append(occupiedSpace / self.sectorLength if self.sectorLength > 0 else 0)
             if int(road.length) - i < self.sectorLength*3/2:
                 break
-        self.states.append(RoadState(time, vehiclesPerSector, len(vehiclesPerSector)))
+        self.states.append(RoadState(time, vehiclesPerSector, densityPerSector, len(vehiclesPerSector)))
 
     def getHistory(self):
         return self.states
@@ -49,8 +57,7 @@ class RoadHistory:
                 "numSectors": state.numSectors
             }
             for i in range(state.numSectors):
-                len = self.sectorLength if i < state.numSectors - 1 else self.road.length - (state.numSectors - 1) * self.sectorLength
-                state_dict["DensityPerSector"].append(state.vehiclesPerSector[i] / len if len > 0 else 0) 
+                state_dict["DensityPerSector"].append(state.densityPerSector[i]) 
             history_dict["states"].append(state_dict)
         with open(filename, "w") as f:
             json.dump(history_dict, f, indent = 4)
