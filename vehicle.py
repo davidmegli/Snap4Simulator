@@ -2,67 +2,59 @@
 @file    vehicle.py
 @author  David Megli
 """
-class VehicleState:
-    def __init__(self, time, position, speed, acceleration, state = "Waiting"):
-        self.time = time
-        self.position = position
-        self.speed = speed #m/s
-        self.acceleration = acceleration #m/s^2
-        self.state = state
+import random
 
 class Vehicle:
-    def __init__(self, id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration, startingTime = 0):
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, moving = False, creationTime = 0, sigma = 0.3):
         self.id = id
         self.length = length #meters
         self.position = initialPosition
+        self.speed = initialSpeed #m/s
+        self.acceleration = initialAcceleration #m/s^2
         self.maxSpeed = maxSpeed #m/s
         self.maxAcceleration = maxAcceleration #m/s^2
-        self.states = [VehicleState(startingTime, initialPosition, initialSpeed, 0)]
+        self.moving = False
+        self.sigma = sigma
     
+    def setSpeed(self, speed):
+        if speed <= self.maxSpeed:
+            self.speed = speed
+        else:
+            self.speed = self.maxSpeed
+
     def speedkmh(self):
         return self._speed * 3.6 #m/s to km/h
     
     def move(self, timeStep = 1):
-        lastState = self.states[-1]
-        newPosition = lastState.position + lastState.speed * timeStep + 0.5 * lastState.acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
-        newSpeed = min(lastState.speed + lastState.acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
-        newAcceleration = 0 #no acceleration for now
-        newTime = lastState.time + timeStep
-        self.states.append(VehicleState(newTime, newPosition, newSpeed, newAcceleration, "Traveling")) #add new state to states list
+        self.position = self.nextPosition(timeStep)
+        self.speed = self.nextSpeed(timeStep)
+        self.acceleration = self.calculateAcceleration(timeStep)
+
+    def calculateAcceleration(self, timeStep = 1):
+        if random.uniform(0, 1) < 0.5:
+            return min(self.acceleration + random.gauss(0, self.sigma), self.maxAcceleration)
+        else:
+            return 0
 
     def stopAt(self, position, timeStep = 1):
-        lastState = self.states[-1]
-        newPosition = position
-        newSpeed = 0
-        newAcceleration = 0
-        newTime = lastState.time + timeStep
-        self.states.append(VehicleState(newTime, newPosition, newSpeed, newAcceleration, "Waiting"))
+        self.position = position
+        self.stop()
 
-    def futurePosition(self, timeStep = 1):
-        lastState = self.states[-1]
-        return lastState.position + lastState.speed * timeStep + 0.5 * lastState.acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
+    def nextPosition(self, timeStep = 1):
+        return self.position + self.speed * timeStep + 0.5 * self.acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
+    
+    def nextSpeed(self, timeStep = 1):
+        return min(self.speed + self.acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
 
-    def stop(self, timeStep = 1):
-        lastState = self.states[-1]
-        newPosition = lastState.position
-        newSpeed = 0
-        newAcceleration = 0
-        newTime = lastState.time + timeStep
-        self.states.append(VehicleState(newTime, newPosition, newSpeed, newAcceleration, "Waiting"))
+    def stop(self):
+        self.speed = 0
+        self.acceleration = 0
 
-    def moveAt(self, position, speed, acceleration, timeStep = 1):
-        lastState = self.states[-1]
-        newPosition = position
-        newSpeed = speed
-        newAcceleration = acceleration
-        newTime = lastState.time + timeStep
-        self.states.append(VehicleState(newTime, newPosition, newSpeed, newAcceleration, "Traveling"))
+    def moveTo(self, position, timeStep = 1):
+        self.position = position
 
-    def stateAtTime(self, time):
-        for state in self.states:
-            if state.time >= time:
-                return state
-        return None
+    def getState(self):
+        return (self.position, self.speed, self.acceleration)
 
 class Car(Vehicle):
     def __init__(self, id, initialSpeed, initialPosition):
