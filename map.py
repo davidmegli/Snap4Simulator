@@ -73,7 +73,7 @@ class Road:
     def vehiclesAt(self, start, end):
         vehicles = []
         for vehicle in self.vehicles:
-            if vehicle.position >= start and vehicle.position <= end:
+            if vehicle.position > start and vehicle.position <= end:
                 vehicles.append(vehicle)
         return vehicles
 

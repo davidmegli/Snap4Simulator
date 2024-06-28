@@ -32,7 +32,7 @@ def simulate():
         for c in cars:
             print("Car %d: position: %fm, speed: %fm/s" % (c.id, c.position, c.speed))
 
-    roadHistory.printHistory()
+    #roadHistory.printHistory()
     roadHistory.saveHistory("history.json")
 
 if __name__ == "__main__":
