@@ -5,7 +5,7 @@
 import random
 
 class Road:
-    def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None):
+    def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
         self.vehicles = [] #list of vehicles on the road
@@ -14,6 +14,7 @@ class Road:
         self.semaphores = semaphores if semaphores else []  # list of semaphores on the road
         self.startJunction = startJunction
         self.endJunction = endJunction
+        self.priority = priority
 
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the road
         # I check if there is a vehicle too close
@@ -86,9 +87,7 @@ class Road:
     def endOfRoadHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
             if self.endJunction != None: #if there is a junction at the end of the road
-                self.endJunction.handleVehicle(vehicle, currentTime, timeStep)
-            else:
-                self.removeVehicle(vehicle)
+                self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
                 print("Car %d reached the end of road %d" % (vehicle.id, self.id))
             #TODO: implement junctions, call the junction method to handle the vehicle
 
@@ -142,6 +141,9 @@ class Road:
         if semaphore in self.semaphores:
             return semaphore.position if semaphore.position != -1 else self.length #if the semaphore is at the end of the road, I return the length of the road
         
+    def getPriority(self):
+        return self.priority
+        
     def resetVehiclePosition(self, vehicle):
         vehicle.setPosition(0)
 
@@ -179,7 +181,10 @@ class Semaphore:
 
 
 class Junction:
-    pass
+    #TODO: handleVehicle virtual function to override. Add other types of junctions, implement the handleVehicle method foreach type of junction
+    
+    def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
+        pass
 
 class Bifurcation(Junction):
     def __init__(self, id, incomingRoad, outgoingRoad1, outgoingRoad2, flux1):
@@ -189,14 +194,88 @@ class Bifurcation(Junction):
         self.outgoingRoad2 = outgoingRoad2
         self.flux1 = flux1
 
-    def handleVehicle(self, vehicle, currentTime, timeStep = 1):
+    def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad.vehicles:
             print("Car %d is at the bifurcation" % vehicle.id)
             nextRoad = self.outgoingRoad1 if random.uniform(0,1) < self.flux1 else self.outgoingRoad2
             print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
             self.incomingRoad.removeVehicle(vehicle)
             print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
-            nextRoad.addVehicle(vehicle, currentTime)
+            nextRoad.addVehicle(vehicle, currentTime, position)
+
+class NFurcation(Junction):
+    def __init__(self, id, incomingRoad = [], outgoingRoads = [], fluxes = []):
+        self.id = id
+        self.incomingRoad = incomingRoad
+        self.outgoingRoads = outgoingRoads
+        self.fluxes = fluxes
+
+    def addOutgoingRoad(self, road, flux):
+        self.outgoingRoads.append(road)
+        self.fluxes.append(flux)
+    
+    def addIncomingRoad(self, road):
+        self.incomingRoad = road
+
+    def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
+        if vehicle in self.incomingRoad.vehicles:
+            print("Car %d is at the n-furcation" % vehicle.id)
+            if self.outgoingRoads == None or self.fluxes == None:
+                if self.incomingRoad != None:
+                    self.incomingRoad.removeVehicle(vehicle)
+                print("Error: n-furcation has no outgoing roads")
+                return
+            randomValue = random.uniform(0,1)
+            #fluxes represent the probability of going to each road, given randomValue I choose the next road
+            chosenRoad = 0
+            for i in range(len(self.fluxes)):
+                if randomValue < self.fluxes[i]:
+                    chosenRoad = i
+                    break
+                randomValue -= self.fluxes[i]
+            nextRoad = self.outgoingRoads[chosenRoad]
+            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
+            self.incomingRoad.removeVehicle(vehicle)
+            print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
+            nextRoad.addVehicle(vehicle, currentTime, position)
+
+class Merge(Junction):
+    def __init__(self, id, incomingRoad1, incomingRoad2, outgoingRoad):
+        self.id = id
+        self.incomingRoad1 = incomingRoad1
+        self.incomingRoad2 = incomingRoad2
+        self.outgoingRoad = outgoingRoad
+        self.priorityRoad = self.priorityRoad()
+        
+    def priorityRoad(self):
+        if self.incomingRoad1.getPriority() <= self.incomingRoad2.getPriority():
+            return self.incomingRoad1
+        return self.incomingRoad2
+
+    def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
+        if vehicle in self.incomingRoad1.vehicles or vehicle in self.incomingRoad2.vehicles:
+            print("Car %d is at the merge" % vehicle.id)
+            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad1.id))
+            self.incomingRoad1.removeVehicle(vehicle)
+            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad2.id))
+            self.incomingRoad2.removeVehicle(vehicle)
+            print("Adding car %d to road %d" % (vehicle.id, self.outgoingRoad.id))
+            self.outgoingRoad.addVehicle(vehicle, currentTime, position)
+
+class Intersection(Junction):
+    def __init__(self, id, incomingRoads, outgoingRoads):
+        self.id = id
+        self.incomingRoads = incomingRoads
+        self.outgoingRoads = outgoingRoads
+
+    def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
+        if vehicle in self.incomingRoad.vehicles:
+            print("Car %d is at the intersection" % vehicle.id)
+            nextRoad = self.outgoingRoads[random.randint(0, len(self.outgoingRoads)-1)]
+            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
+            self.incomingRoad.removeVehicle(vehicle)
+            print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
+            nextRoad.addVehicle(vehicle, currentTime, position)
 
 #class Junction:
 

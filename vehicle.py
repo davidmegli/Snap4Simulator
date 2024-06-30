@@ -10,6 +10,7 @@ class Vehicle:
     STATE_WAITING_SEMAPHORE = "semaphore"
     STATE_WAITING_VEHICLE = "vehicle"
     STATE_FOLLOWING_VEHICLE = "following"
+    STATE_GIVING_WAY = "giving_way"
     def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.3):
         self.id = id
         self.length = length #meters
@@ -114,6 +115,9 @@ class Vehicle:
     
     def isWaitingVehicle(self):
         return self.state == self.STATE_WAITING_VEHICLE
+    
+    def isGivingWay(self):
+        return self.state == self.STATE_GIVING_WAY
     
     def followVehicle(self, vehicle, distance):
         self.setPosition(vehicle.position - vehicle.length - distance)

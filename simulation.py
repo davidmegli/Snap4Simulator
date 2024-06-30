@@ -3,7 +3,7 @@
 @author  David Megli
 """
 from vehicle import Vehicle
-from map import Road, Semaphore, Junction, Bifurcation
+from map import Road, Semaphore, Junction, Bifurcation, NFurcation
 from data import RoadHistory
 import random
 
@@ -24,7 +24,9 @@ def simulate():
     road1History = RoadHistory(road1, roadLength / sectorsPerRoad) #road, sectorLength
     road2History = RoadHistory(road2, roadLength / sectorsPerRoad)
     road3History = RoadHistory(road3, roadLength / sectorsPerRoad)
-    bifurcation1 = Bifurcation(0,road1,road2,road3,0.2)
+    bifurcation1 = NFurcation(0,road1)#= Bifurcation(0,road1,road2,road3,0.2)
+    bifurcation1.addOutgoingRoad(road2, 0.2)
+    bifurcation1.addOutgoingRoad(road3, 0.8)
     road1.addEndJunction(bifurcation1)
     cars = []
     road1.addSemaphore(semaphore)
