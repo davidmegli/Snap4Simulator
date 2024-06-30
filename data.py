@@ -5,6 +5,8 @@
 from map import Road
 import json
 
+#TODO: MapState and MapHistory to keep track of the entire map, with saveHistory function to save the entire history of the map in a json file
+
 class RoadState:
     def __init__(self, time, vehiclesPerSector, densityPerSector, numSectors):
         self.time = time

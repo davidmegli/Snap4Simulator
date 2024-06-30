@@ -3,7 +3,7 @@
 @author  David Megli
 """
 from vehicle import Vehicle
-from map import Road, Semaphore, Junction, Bifurcation, NFurcation
+from map import Road, Semaphore, Junction, Bifurcation, NFurcation, Merge
 from data import RoadHistory
 import random
 
@@ -17,7 +17,7 @@ def simulate():
     timeStep = 2 #seconds
     sectorsPerRoad = 10
     roadLength = 1000 #meters
-    semaphore = Semaphore(8, 2, roadLength/2, 0, 0)
+    semaphore = Semaphore(8, 2, roadLength/2, 0, 0) 
     road1 = Road(0, roadLength, 1, 50/3.6,) #id, length, vehicleDistance, speedLimit
     road2 = Road(1, roadLength, 1, 50/3.6)
     road3 = Road(2, roadLength, 1, 50/3.6)
@@ -25,13 +25,18 @@ def simulate():
     road2History = RoadHistory(road2, roadLength / sectorsPerRoad)
     road3History = RoadHistory(road3, roadLength / sectorsPerRoad)
     bifurcation1 = NFurcation(0,road1)#= Bifurcation(0,road1,road2,road3,0.2)
+    #road 1 goes into 2 and 3 with 20% and 80% probability
     bifurcation1.addOutgoingRoad(road2, 0.2)
     bifurcation1.addOutgoingRoad(road3, 0.8)
     road1.addEndJunction(bifurcation1)
+    #road 2 and 3 merge into 1 (loop)
+    merge = Merge(1, road2, road3, road1)
+    road2.addEndJunction(merge)
+    road3.addEndJunction(merge)
     cars = []
     road1.addSemaphore(semaphore)
     #road.add_vehicle(car) #TODO: adapt all to new code, implement separate classes to handle world state and sectors, then implement semaphores and junctions
-    for i in range(60):
+    for i in range(600):
         time = i * timeStep
         speed = random.uniform(minSpeed, maxSpeed)
         cars.append(Vehicle(i, carLength, startingPosition, speed, 0, topSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration

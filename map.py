@@ -208,6 +208,12 @@ class Bifurcation(Junction):
         self.outgoingRoad1 = outgoingRoad1
         self.outgoingRoad2 = outgoingRoad2
         self.flux1 = flux1
+        if incomingRoad != None:
+            incomingRoad.addEndJunction(self)
+        if outgoingRoad1 != None:
+            outgoingRoad1.addStartJunction(self)
+        if outgoingRoad2 != None:
+            outgoingRoad2.addStartJunction(self)
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad.vehicles:
@@ -219,18 +225,25 @@ class Bifurcation(Junction):
             nextRoad.addVehicle(vehicle, currentTime, position)
 
 class NFurcation(Junction):
-    def __init__(self, id, incomingRoad = [], outgoingRoads = [], fluxes = []):
+    def __init__(self, id, incomingRoad = None, outgoingRoads = [], fluxes = []):
         self.id = id
         self.incomingRoad = incomingRoad
+        if incomingRoad != None:
+            incomingRoad.addEndJunction(self)
         self.outgoingRoads = outgoingRoads
+        if outgoingRoads != None:
+            for road in outgoingRoads:
+                road.addStartJunction(self)
         self.fluxes = fluxes
 
     def addOutgoingRoad(self, road, flux):
         self.outgoingRoads.append(road)
         self.fluxes.append(flux)
+        road.addStartJunction(self)
     
     def addIncomingRoad(self, road):
         self.incomingRoad = road
+        road.addEndJunction(self)
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad.vehicles:
@@ -261,6 +274,12 @@ class Merge(Junction):
         self.incomingRoad2 = incomingRoad2
         self.outgoingRoad = outgoingRoad
         self.priorityRoad = self.priorityRoad()
+        if incomingRoad1 != None:
+            incomingRoad1.addEndJunction(self)
+        if incomingRoad2 != None:
+            incomingRoad2.addEndJunction(self)
+        if outgoingRoad != None:
+            outgoingRoad.addStartJunction(self)
         
     def priorityRoad(self):
         if self.incomingRoad1.getPriority() <= self.incomingRoad2.getPriority():
@@ -269,21 +288,16 @@ class Merge(Junction):
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad1.vehicles or vehicle in self.incomingRoad2.vehicles:
-            print("Car %d is at the merge" % vehicle.id)
-            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad1.id))
-            self.incomingRoad1.removeVehicle(vehicle)
-            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad2.id))
-            self.incomingRoad2.removeVehicle(vehicle)
-
             fromRoad = self.incomingRoad1 if vehicle in self.incomingRoad1.vehicles else self.incomingRoad2
+            print("Car %d is at the merge" % vehicle.id)
+            print("Removing car %d from road %d" % (vehicle.id, fromRoad.id))
+            fromRoad.removeVehicle(vehicle)
+
+            
             if fromRoad == self.priorityRoad:
                 self.outgoingRoad.addVehicle(vehicle, currentTime, position)
             else:
                 fromRoad.giveWay(vehicle)
-
-            
-            #TODO: check for each incoming road if there is a vehicle whom next position would be on the outgoingroad( >incoming road length), if so, check who
-            #has the priority and let that vehicle go first, stop the other vehicle at its incoming road length (last position)
 
 class Intersection(Junction):
     def __init__(self, id, incomingRoads, outgoingRoads):
@@ -300,7 +314,9 @@ class Intersection(Junction):
             print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
             nextRoad.addVehicle(vehicle, currentTime, position)
 
-#class Junction:
+#TODO: add intersection with semaphores
+
+#TODO: functions to handle initialization of networks
 
 # carreggiata, è composta da n corsie
 #class Roadway:
