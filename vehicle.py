@@ -9,6 +9,7 @@ class Vehicle:
     STATE_MOVING = "moving"
     STATE_WAITING_SEMAPHORE = "semaphore"
     STATE_WAITING_VEHICLE = "vehicle"
+    STATE_WAITING_TO_ENTER = "entering"
     STATE_FOLLOWING_VEHICLE = "following"
     STATE_GIVING_WAY = "giving_way" #"precedenza"
     def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.3):
@@ -122,6 +123,9 @@ class Vehicle:
     
     def isGivingWay(self):
         return self.state == self.STATE_GIVING_WAY
+    
+    def isWaitingToEnter(self):
+        return self.state == self.STATE_WAITING_TO_ENTER
     
     def followVehicle(self, vehicle, distance):
         self.setPosition(vehicle.position - vehicle.length - distance)

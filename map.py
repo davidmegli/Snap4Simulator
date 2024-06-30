@@ -4,21 +4,21 @@
 """
 import random
 
-class Road:
+class Lane:
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
-        self.vehicles = [] #list of vehicles on the road
+        self.vehicles = [] #list of vehicles on the lane
         self.vehicleDistance = vehicleDistance #distance between vehicles in meters
         self.speedLimit = speedLimit #speed limit in m/s
-        self.semaphores = semaphores if semaphores else []  # list of semaphores on the road
+        self.semaphores = semaphores if semaphores else []  # list of semaphores on the lane
         self.startJunction = startJunction
         self.endJunction = endJunction
         self.priority = priority
 
-    def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the road
+    def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the lane and returns the position of the vehicle
         # I check if there is a vehicle too close
-        self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the road, so I reset it to 0
+        self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the lane, so I reset it to 0
         precedingVehicle = self.precedingVehicle(vehicle)
         firstSem = self.getFirstSemaphore()
         if precedingVehicle != None:
@@ -32,6 +32,13 @@ class Road:
         else:
             self.limitSpeed(vehicle)
         self.vehicles.append(vehicle)
+        return position
+
+    def tryAddVehicle(self, vehicle, currentTime, position = 0): #only adds the vehicle if there is enough space, returns the position of the vehicle
+        pos = self.addVehicle(vehicle, currentTime, position)
+        if pos < 0:
+            self.removeVehicle(vehicle)
+        return pos
 
     def addSemaphore(self, position, greenTime, redTime, yellowTime = 0, startTime = 0): #MUST add semaphores in order of position
         self.semaphores.append(Semaphore(greenTime, redTime, position, yellowTime, startTime))
@@ -57,9 +64,9 @@ class Road:
         self.endJunction = junction
 
     def moveVehicle(self, vehicle, currentTime, timeStep = 1):
-        # If the vehicle is in the road, I get its future position, if the position is in the next sector I check if it is not full, if it's not full
+        # If the vehicle is in the lane, I get its future position, if the position is in the next sector I check if it is not full, if it's not full
         # I move the vehicle to the next sector and call the move method of the vehicle, otherwise I call the stopAt method of the vehicle to stop it
-        if vehicle in self.vehicles: #if the vehicle is on the road
+        if vehicle in self.vehicles: #if the vehicle is on the lane
             currentPos = vehicle.getPosition()
             nextPos = vehicle.calculatePosition(timeStep) #I get the future position of the vehicle based on current speed and acceleration
             precedingVeh = self.precedingVehicle(vehicle) #I get the previous vehicle
@@ -67,18 +74,18 @@ class Road:
             nextSemPos = self.getSemaphorePosition(nextSem) if nextSem != None else -2 #I get the position of the semaphore
             redSemInFront = nextSem != None and nextSem.isRed(currentTime) and nextPos >= nextSemPos
             vehicleInFront = precedingVeh != None and nextPos > self.safetyDistanceFrom(precedingVeh)
-            freeRoad = not redSemInFront and not vehicleInFront
+            freeLane = not redSemInFront and not vehicleInFront
 
             if not vehicle.isGivingWay(): #if the vehicle is not giving way
                 if vehicle.isStopped():
-                    if freeRoad: #if the road is free
+                    if freeLane: #if the lane is free
                         vehicle.restart(timeStep)
                     elif redSemInFront: #if the next semaphore is red
                         pass
                     elif not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
                         vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
                 else: #if the vehicle is moving
-                    if freeRoad: #if the road is free
+                    if freeLane: #if the lane is free
                         vehicle.move(timeStep)
                     elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
                         if nextSemPos < self.safetyDistanceFrom(precedingVeh): #if the red semaphore is closer
@@ -91,22 +98,22 @@ class Road:
                         vehicle.followVehicle(precedingVeh,self.vehicleDistance)
         
                 ExceedingDistance = vehicle.getPosition() - self.length
-                if ExceedingDistance > 0: #if the vehicle reach the end of the road
-                    self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)
+                if ExceedingDistance > 0: #if the vehicle reach the end of the lane
+                    self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep)
 
             else: #if the vehicle is giving way
                 vehicle.restart(timeStep) #I try to restart the vehicle
-                ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the road
-                self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfRoadHandler will decide if the vehicle can go or has to keep waiting
+                ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the lane
+                self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfLaneHandler will decide if the vehicle can go or has to keep waiting
 
             return True
         return False
     
-    def endOfRoadHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
+    def endOfLaneHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
-            if self.endJunction != None: #if there is a junction at the end of the road
+            if self.endJunction != None: #if there is a junction at the end of the lane
                 self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
-                print("Car %d reached the end of road %d" % (vehicle.id, self.id))
+                print("Car %d reached the end of lane %d" % (vehicle.id, self.id))
 
     def hasOutgoingVehicles(self, timeStep = 1):
         for vehicle in self.vehicles:
@@ -119,14 +126,23 @@ class Road:
             print("Moving car %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
 
-    def giveWay(self, vehicle): #check if the vehicle stops everytime without checking if the road is free
+    def waitForNextLane(self, vehicle, pos):
+        safePos = self.safetyDistanceFromFollowingVehicleOf(vehicle)
+        if pos >= safePos:
+            vehicle.GiveWay(pos)
+        elif safePos < self.length:
+            vehicle.GiveWay(safePos)
+        else:
+            vehicle.GiveWay(self.length)
+
+    def giveWay(self, vehicle): #check if the vehicle stops everytime without checking if the lane is free
         vehicle.giveWay(self.length)
     
     def limitSpeed(self, vehicle):
         if vehicle.getSpeed() > self.speedLimit:
             vehicle.setSpeed(self.speedLimit)
 
-    def precedingVehicle(self, vehicle): #I get the previous vehicle of the current vehicle, Vehicles must be ordered by position
+    def precedingVehicle(self, vehicle): #I get the preceding vehicle of the current vehicle, Vehicles must be ordered by position
         for i in range(len(self.vehicles)):
             if self.vehicles[i] == vehicle:
                 if i > 0:
@@ -134,8 +150,19 @@ class Road:
                 return None
         return None
     
+    def followingVehicle(self, vehicle): #I get the following vehicle of the current vehicle, Vehicles must be ordered by position
+        for i in range(len(self.vehicles)):
+            if self.vehicles[i] == vehicle:
+                if i < len(self.vehicles) - 1:
+                    return self.vehicles[i+1]
+                return None
+        return None
+    
     def safetyDistanceFrom(self, vehicle):
         return vehicle.position - self.vehicleDistance - vehicle.length
+    
+    def safetyDistanceFromFollowingVehicleOf(self, vehicle):
+        return vehicle.position + self.vehicleDistance + vehicle.length
 
     def removeVehicle(self, vehicle):
         self.vehicles.remove(vehicle)
@@ -164,7 +191,7 @@ class Road:
     
     def getSemaphorePosition(self, semaphore):
         if semaphore in self.semaphores:
-            return semaphore.position if semaphore.position != -1 else self.length #if the semaphore is at the end of the road, I return the length of the road
+            return semaphore.position if semaphore.position != -1 else self.length #if the semaphore is at the end of the lane, I return the length of the lane
     
     def getEndSemaphore(self):
         for semaphore in self.semaphores:
@@ -198,7 +225,7 @@ class Semaphore:
     def __init__(self, greenTime, redTime, position = -1, yellowTime = 0, startTime = 0):
         self.greenTime = greenTime
         self.redTime = redTime
-        self.position = position #position of the semaphore on the road, -1 = end of the road, 0 = start of the road
+        self.position = position #position of the semaphore on the lane, -1 = end of the lane, 0 = start of the lane
         self.yellowTime = yellowTime
         self.startTime = startTime
         self.totalCycleTime = self.greenTime + self.redTime + self.yellowTime
@@ -244,189 +271,204 @@ class Junction:
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         pass
 
-class Bifurcation(Junction): #I can use NFurcation instead of Bifurcation with 2 outgoing roads
-    def __init__(self, id, incomingRoad, outgoingRoad1, outgoingRoad2, flux1):
+class Bifurcation(Junction): #I can use NFurcation instead of Bifurcation with 2 outgoing lanes
+    def __init__(self, id, incomingLane, outgoingLane1, outgoingLane2, flux1):
         self.id = id
-        self.incomingRoad = incomingRoad
-        self.outgoingRoad1 = outgoingRoad1
-        self.outgoingRoad2 = outgoingRoad2
+        self.incomingLane = incomingLane
+        self.outgoingLane1 = outgoingLane1
+        self.outgoingLane2 = outgoingLane2
         self.flux1 = flux1
-        if incomingRoad != None:
-            incomingRoad.addEndJunction(self)
-        if outgoingRoad1 != None:
-            outgoingRoad1.addStartJunction(self)
-        if outgoingRoad2 != None:
-            outgoingRoad2.addStartJunction(self)
+        if incomingLane != None:
+            incomingLane.addEndJunction(self)
+        if outgoingLane1 != None:
+            outgoingLane1.addStartJunction(self)
+        if outgoingLane2 != None:
+            outgoingLane2.addStartJunction(self)
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
-        if vehicle in self.incomingRoad.vehicles:
+        if vehicle in self.incomingLane.vehicles:
             print("Car %d is at the bifurcation" % vehicle.id)
-            nextRoad = self.outgoingRoad1 if random.uniform(0,1) < self.flux1 else self.outgoingRoad2
-            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
-            self.incomingRoad.removeVehicle(vehicle)
-            print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
-            nextRoad.addVehicle(vehicle, currentTime, position)
+            nextLane = self.outgoingLane1 if random.uniform(0,1) < self.flux1 else self.outgoingLane2
+            print("Removing car %d from lane %d" % (vehicle.id, self.incomingLane.id))
+            print("Adding car %d to lane %d" % (vehicle.id, nextLane.id))
+            pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
+            if pos < 0: #if the vehicle cannot be added to the next lane
+                pos += self.incomingLane.length
+                self.incomingLane.waitForNextLane(vehicle,pos)
+            else:
+                self.incomingLane.removeVehicle(vehicle)
 
-class NFurcation(Junction): #1 incoming road, n outgoing roads
-    def __init__(self, id, incomingRoad = None, outgoingRoads = [], fluxes = []):
+
+class NFurcation(Junction): #1 incoming lane, n outgoing lanes
+    def __init__(self, id, incomingLane = None, outgoingLanes = [], fluxes = []):
         self.id = id
-        self.incomingRoad = incomingRoad
-        if incomingRoad != None:
-            incomingRoad.addEndJunction(self)
-        self.outgoingRoads = outgoingRoads
-        if outgoingRoads != None:
-            for road in outgoingRoads:
-                road.addStartJunction(self)
+        self.incomingLane = incomingLane
+        if incomingLane != None:
+            incomingLane.addEndJunction(self)
+        self.outgoingLanes = outgoingLanes
+        if outgoingLanes != None:
+            for lane in outgoingLanes:
+                lane.addStartJunction(self)
         self.fluxes = fluxes
 
-    def addOutgoingRoad(self, road, flux):
-        self.outgoingRoads.append(road)
+    def addOutgoingLane(self, lane, flux):
+        self.outgoingLanes.append(lane)
         self.fluxes.append(flux)
-        road.addStartJunction(self)
+        lane.addStartJunction(self)
     
-    def addIncomingRoad(self, road):
-        self.incomingRoad = road
-        road.addEndJunction(self)
+    def addIncomingLane(self, lane):
+        self.incomingLane = lane
+        lane.addEndJunction(self)
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
-        if vehicle in self.incomingRoad.vehicles:
+        if vehicle in self.incomingLane.vehicles:
             print("Car %d is at the n-furcation" % vehicle.id)
-            if self.outgoingRoads == None or self.fluxes == None:
-                if self.incomingRoad != None:
-                    self.incomingRoad.removeVehicle(vehicle)
-                print("Error: n-furcation has no outgoing roads")
+            if self.outgoingLanes == None or self.fluxes == None:
+                if self.incomingLane != None:
+                    self.incomingLane.removeVehicle(vehicle)
+                print("Error: n-furcation has no outgoing lanes")
                 return
             randomValue = random.uniform(0,1)
-            #fluxes represent the probability of going to each road, given randomValue I choose the next road
-            chosenRoad = 0
+            #fluxes represent the probability of going to each lane, given randomValue I choose the next lane
+            chosenLane = 0
             for i in range(len(self.fluxes)):
                 if randomValue < self.fluxes[i]:
-                    chosenRoad = i
+                    chosenLane = i
                     break
                 randomValue -= self.fluxes[i]
-            nextRoad = self.outgoingRoads[chosenRoad]
-            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
-            self.incomingRoad.removeVehicle(vehicle)
-            print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
-            nextRoad.addVehicle(vehicle, currentTime, position)
+            nextLane = self.outgoingLanes[chosenLane]
+            pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
+            if pos < 0: #if the vehicle cannot be added to the next lane
+                pos += self.incomingLane.length
+                self.incomingLane.waitForNextLane(vehicle,pos)
+            else:
+                self.incomingLane.removeVehicle(vehicle)
 
-class Merge(Junction): #2 incoming roads, 1 outgoing road
-    def __init__(self, id, incomingRoad1, incomingRoad2, outgoingRoad):
+class Merge(Junction): #2 incoming lanes, 1 outgoing lane
+    def __init__(self, id, incomingLane1, incomingLane2, outgoingLane):
         self.id = id
-        self.incomingRoad1 = incomingRoad1
-        self.incomingRoad2 = incomingRoad2
-        self.outgoingRoad = outgoingRoad
-        self.priorityRoad = self.priorityRoad()
-        if incomingRoad1 != None:
-            incomingRoad1.addEndJunction(self)
-        if incomingRoad2 != None:
-            incomingRoad2.addEndJunction(self)
-        if outgoingRoad != None:
-            outgoingRoad.addStartJunction(self)
+        self.incomingLane1 = incomingLane1
+        self.incomingLane2 = incomingLane2
+        self.outgoingLane = outgoingLane
+        self.priorityLane = self.priorityLane()
+        if incomingLane1 != None:
+            incomingLane1.addEndJunction(self)
+        if incomingLane2 != None:
+            incomingLane2.addEndJunction(self)
+        if outgoingLane != None:
+            outgoingLane.addStartJunction(self)
         
-    def priorityRoad(self):
-        if self.incomingRoad1.getPriority() <= self.incomingRoad2.getPriority():
-            return self.incomingRoad1
-        return self.incomingRoad2
+    def priorityLane(self):
+        if self.incomingLane1.getPriority() <= self.incomingLane2.getPriority():
+            return self.incomingLane1
+        return self.incomingLane2
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
-        if vehicle in self.incomingRoad1.vehicles or vehicle in self.incomingRoad2.vehicles:
-            fromRoad = self.incomingRoad1 if vehicle in self.incomingRoad1.vehicles else self.incomingRoad2 #I get the road from which the vehicle comes
+        if vehicle in self.incomingLane1.vehicles or vehicle in self.incomingLane2.vehicles:
+            fromLane = self.incomingLane1 if vehicle in self.incomingLane1.vehicles else self.incomingLane2 #I get the lane from which the vehicle comes
 
-            if fromRoad == self.priorityRoad or not self.priorityRoad.hasOutgoingVehicles(timeStep): #if the vehicle comes from the priority road or the priority road is free
-                fromRoad.removeVehicle(vehicle)
-                self.outgoingRoad.addVehicle(vehicle, currentTime, position)
+            if fromLane == self.priorityLane or not self.priorityLane.hasOutgoingVehicles(timeStep): #if the vehicle comes from the priority lane or the priority lane is free
+                pos = self.outgoingLane.tryAddVehicle(vehicle, currentTime, position)
+                if pos < 0: #if the vehicle cannot be added to the next lane
+                    pos += fromLane.length
+                    self.incomingLane.waitForNextLane(vehicle,pos)
+                else:
+                    fromLane.removeVehicle(vehicle)
             else:
-                fromRoad.giveWay(vehicle)
+                fromLane.giveWay(vehicle)
 
-class Intersection(Junction): #n incoming roads, n outgoing roads
-    def __init__(self, id, incomingRoads = [], outgoingRoads = [], incomingRoadsFluxes = [], outgoingRoadsFluxes = []):
+class Intersection(Junction): #n incoming lanes, n outgoing lanes
+    def __init__(self, id, incomingLanes = [], outgoingLanes = [], incomingFluxes = [], outgoingFluxes = []):
         self.id = id
-        self.incomingRoads = incomingRoads
-        self.outgoingRoads = outgoingRoads
-        self.incomingRoadsFluxes = incomingRoadsFluxes
-        self.outgoingRoadsFluxes = outgoingRoadsFluxes
+        self.incomingLanes = incomingLanes
+        self.outgoingLanes = outgoingLanes
+        self.incomingLanesFluxes = incomingFluxes
+        self.outgoingLanesFluxes = outgoingFluxes
 
-    def addIncomingRoad(self, road, semaphore = None): #semaphores must be synchronized setting same start time and opposite green and red times
-        self.incomingRoads.append(road)
-        road.addEndJunction(self)
+    def addIncomingLane(self, lane, semaphore = None): #semaphores must be synchronized setting same start time and opposite green and red times
+        self.incomingLanes.append(lane)
+        lane.addEndJunction(self)
         if semaphore != None:
-            road.addSemaphoreAtEnd(semaphore)
+            lane.addSemaphoreAtEnd(semaphore)
     
-    def addOutgoingRoad(self, road, flux):
-        self.outgoingRoads.append(road)
-        self.outgoingRoadsFluxes.append(flux)
-        road.addStartJunction(self)
+    def addOutgoingLane(self, lane, flux):
+        self.outgoingLanes.append(lane)
+        self.outgoingLanesFluxes.append(flux)
+        lane.addStartJunction(self)
 
-    def incomingRoad(self, vehicle):
-        for road in self.incomingRoads:
-            if vehicle in road.vehicles:
-                return road
+    def incomingLane(self, vehicle):
+        for lane in self.incomingLanes:
+            if vehicle in lane.vehicles:
+                return lane
         return None
 
-    def getPriorityRoad(self):
-        if self.incomingRoads == None:
-            print("Error: intersection has no incoming roads")
+    def getPriorityLane(self): #returns the lane with the highest priority that has green light
+        if self.incomingLanes == None:
+            print("Error: intersection has no incoming lanes")
             return None
-        priorityRoad = None
-        for road in self.incomingRoads: #get the first road that is not red
-            if road.isGreen():
-                priorityRoad = road
+        priorityLane = None
+        for lane in self.incomingLanes: #get the first lane that is not red
+            if lane.isGreen():
+                priorityLane = lane
                 break
-        if priorityRoad == None:
+        if priorityLane == None:
             return None
-        for road in self.incomingRoads:
-            if road.getPriority() < priorityRoad.getPriority() and road.isGreen():
-                priorityRoad = road
-        return priorityRoad
+        for lane in self.incomingLanes:
+            if lane.getPriority() < priorityLane.getPriority() and lane.isGreen():
+                priorityLane = lane
+        return priorityLane
 
-    def getNextRoad(self):
-        chosenRoad = 0
-        for i in range(len(self.outgoingRoadsFluxes)):
-            if randomValue < self.outgoingRoadsFluxes[i]:
-                chosenRoad = i
+    def getNextLane(self):
+        randomValue = random.uniform(0,1)
+        chosenLane = 0
+        for i in range(len(self.outgoingLanesFluxes)):
+            if randomValue < self.outgoingLanesFluxes[i]:
+                chosenLane = i
                 break
-            randomValue -= self.outgoingRoadsFluxes[i]
-        nextRoad = self.outgoingRoads[chosenRoad]
-        return nextRoad
+            randomValue -= self.outgoingLanesFluxes[i]
+        nextLane = self.outgoingLanes[chosenLane]
+        return nextLane
     
-    def canGo(self, road):
-        #I take every road with highest priority (lowest number) that has Green and has outgoing vehicles, if there is no such road I return True
-        if self.incomingRoads == None:
+    def canGo(self, lane):
+        #I take every lane with higher priority (lowest number) that has Green and has outgoing vehicles, if there is no such lane I return True
+        if self.incomingLanes == None:
             return False
-        for r in self.incomingRoads:
-            if r.getPriority() < road.getPriority() and r.isGreen() and r.hasOutgoingVehicles():
+        for r in self.incomingLanes:
+            if r.getPriority() < lane.getPriority() and r.isGreen() and r.hasOutgoingVehicles():
                 return False
         return True
     
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
-        if self.incomingRoads == None:
-            print("Error: intersection has no incoming roads")
+        if self.incomingLanes == None:
+            print("Error: intersection has no incoming lanes")
             return
-        incRoad = self.incomingRoad(vehicle)
-        if incRoad != None:
-            if self.outgoingRoads == None or self.outgoingRoadsFluxes == None:
-                if incRoad != None:
-                    incRoad.removeVehicle(vehicle)
-                print("Error: intersection has no outgoing roads")
+        incomingLane = self.incomingLane(vehicle)
+        if incomingLane != None:
+            if self.outgoingLanes == None or self.outgoingLanesFluxes == None:
+                if incomingLane != None:
+                    incomingLane.removeVehicle(vehicle)
+                print("Error: intersection has no outgoing lanes")
                 return
-            randomValue = random.uniform(0,1)
-            #fluxes represent the probability of going to each road, given randomValue I choose the next road
-            nextRoad = self.getNextRoad()
-            priorityRoad = self.getPriorityRoad()
-            canGo = self.canGo(incRoad)
+            #fluxes represent the probability of going to each lane, given randomValue I choose the next lane
+            nextLane = self.getNextLane()
+            priorityLane = self.getPriorityLane()
+
+            canGo = self.canGo(incomingLane)
             if canGo:
-                nextRoad.addVehicle(vehicle, currentTime, position)
-                incRoad.removeVehicle(vehicle)
+                pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
+                if pos < 0: #if the vehicle cannot be added to the next lane
+                    pos += incomingLane.length
+                    self.incomingLane.waitForNextLane(vehicle, pos)
+                else:
+                    incomingLane.removeVehicle(vehicle)
             else:
-                incRoad.giveWay(vehicle)
+                incomingLane.giveWay(vehicle)
 
-
-#TODO: add intersection with semaphores, add priority to roads, add priority to vehicles, add vehicle types, add vehicle types to roads, add vehicle types to junctions
-
+#TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
+#TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks
 
-# carreggiata, è composta da n corsie
+#TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Roadway > Road > Lane
 #class Roadway:
 
 
