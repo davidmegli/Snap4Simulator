@@ -12,8 +12,8 @@ class Road:
         self.vehicleDistance = vehicleDistance #distance between vehicles in meters
         self.speedLimit = speedLimit #speed limit in m/s
         self.semaphores = semaphores if semaphores else []  # list of semaphores on the road
-        self.startJunction = None #TODO: implement junctions
-        self.endJunction = None
+        self.startJunction = startJunction
+        self.endJunction = endJunction
 
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the road
         # I check if there is a vehicle too close
