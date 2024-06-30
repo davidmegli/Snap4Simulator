@@ -3,7 +3,7 @@
 @author  David Megli
 """
 from vehicle import Vehicle
-from map import Road
+from map import Road, Semaphore
 from data import RoadHistory
 import random
 
@@ -20,13 +20,15 @@ def simulate():
     road = Road(0, roadLength, 1, 50/3.6) #id, length, vehicleDistance, speedLimit
     roadHistory = RoadHistory(road, roadLength / sectorsPerRoad) #road, sectorLength
     cars = []
+    semaphore = Semaphore(8, 2, roadLength/2, 0, 0)
+    road.addSemaphore(semaphore)
     #road.add_vehicle(car) #TODO: adapt all to new code, implement separate classes to handle world state and sectors, then implement semaphores and junctions
     for i in range(60):
         time = i * timeStep
         speed = random.uniform(minSpeed, maxSpeed)
         cars.append(Vehicle(i, carLength, startingPosition, speed, 0, topSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
         road.addVehicle(cars[i], time)
-        road.moveVehicles(timeStep)
+        road.moveVehicles(time,timeStep)
         roadHistory.saveState(road, time)
         print("Time: %d" % i)
         for c in cars:
