@@ -58,29 +58,36 @@ class Road:
             vehicleInFront = precedingVeh != None and nextPos > self.safetyDistanceFrom(precedingVeh)
             freeRoad = not redSemInFront and not vehicleInFront
 
-            if vehicle.isStopped():
-                if freeRoad: #if the road is free
-                    vehicle.restart(timeStep)
-                elif redSemInFront: #if the next semaphore is red
-                    pass
-                elif not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
-                    vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
-            else: #if the vehicle is moving
-                if freeRoad: #if the road is free
-                    vehicle.move(timeStep)
-                elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
-                    if nextSemPos < self.safetyDistanceFrom(precedingVeh): #if the red semaphore is closer
-                        vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
-                    else: #if the vehicle in front is closer
+            if not vehicle.isGivingWay(): #if the vehicle is not giving way
+                if vehicle.isStopped():
+                    if freeRoad: #if the road is free
+                        vehicle.restart(timeStep)
+                    elif redSemInFront: #if the next semaphore is red
+                        pass
+                    elif not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
                         vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
-                elif redSemInFront: #if the next semaphore is red but there is no vehicle in front
-                    vehicle.stopAtSemaphore(nextSemPos)
-                elif vehicleInFront: #if there is a vehicle in front
-                    vehicle.followVehicle(precedingVeh,self.vehicleDistance)
-    
-            ExceedingDistance = vehicle.getPosition() - self.length
-            if ExceedingDistance > 0: #if the vehicle reach the end of the road
-                self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)
+                else: #if the vehicle is moving
+                    if freeRoad: #if the road is free
+                        vehicle.move(timeStep)
+                    elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
+                        if nextSemPos < self.safetyDistanceFrom(precedingVeh): #if the red semaphore is closer
+                            vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
+                        else: #if the vehicle in front is closer
+                            vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
+                    elif redSemInFront: #if the next semaphore is red but there is no vehicle in front
+                        vehicle.stopAtSemaphore(nextSemPos)
+                    elif vehicleInFront: #if there is a vehicle in front
+                        vehicle.followVehicle(precedingVeh,self.vehicleDistance)
+        
+                ExceedingDistance = vehicle.getPosition() - self.length
+                if ExceedingDistance > 0: #if the vehicle reach the end of the road
+                    self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)
+
+            else: #if the vehicle is giving way
+                vehicle.restart(timeStep) #I try to restart the vehicle
+                ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the road
+                self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfRoadHandler will decide if the vehicle can go or has to keep waiting
+
             return True
         return False
     
@@ -91,11 +98,19 @@ class Road:
                 print("Car %d reached the end of road %d" % (vehicle.id, self.id))
             #TODO: implement junctions, call the junction method to handle the vehicle
 
+    def hasOutgoingVehicles(self, timeStep = 1):
+        for vehicle in self.vehicles:
+            if vehicle.calculatePosition(timeStep) > self.length:
+                return True
+
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.vehicles[:] #I iterate over a copy of the list
         for vehicle in tmp:
             print("Moving car %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
+
+    def giveWay(self, vehicle):
+        vehicle.giveWay(self.length)
     
     def limitSpeed(self, vehicle):
         if vehicle.getSpeed() > self.speedLimit:
@@ -259,8 +274,16 @@ class Merge(Junction):
             self.incomingRoad1.removeVehicle(vehicle)
             print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad2.id))
             self.incomingRoad2.removeVehicle(vehicle)
-            print("Adding car %d to road %d" % (vehicle.id, self.outgoingRoad.id))
-            self.outgoingRoad.addVehicle(vehicle, currentTime, position)
+
+            fromRoad = self.incomingRoad1 if vehicle in self.incomingRoad1.vehicles else self.incomingRoad2
+            if fromRoad == self.priorityRoad:
+                self.outgoingRoad.addVehicle(vehicle, currentTime, position)
+            else:
+                fromRoad.giveWay(vehicle)
+
+            
+            #TODO: check for each incoming road if there is a vehicle whom next position would be on the outgoingroad( >incoming road length), if so, check who
+            #has the priority and let that vehicle go first, stop the other vehicle at its incoming road length (last position)
 
 class Intersection(Junction):
     def __init__(self, id, incomingRoads, outgoingRoads):
