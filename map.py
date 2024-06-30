@@ -39,6 +39,17 @@ class Road:
     def addSemaphore(self, semaphore): #MUST add semaphores in order of position
         self.semaphores.append(semaphore)
 
+    def setSemaphoreAtEnd(self, semaphore):
+        self.removeSemaphoreAtEnd()
+        self.addSemaphoreAtEnd(semaphore)
+
+    def addSemaphoreAtEnd(self, semaphore):
+        self.semaphores.append(semaphore)
+        semaphore.position = -1
+    
+    def addSemaphoreAtEnd(self, greenTime, redTime, yellowTime = 0, startTime = 0):
+        self.semaphores.append(Semaphore(greenTime, redTime, -1, yellowTime, startTime))
+
     def addStartJunction(self, junction):
         self.startJunction = junction
 
@@ -96,7 +107,6 @@ class Road:
             if self.endJunction != None: #if there is a junction at the end of the road
                 self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
                 print("Car %d reached the end of road %d" % (vehicle.id, self.id))
-            #TODO: implement junctions, call the junction method to handle the vehicle
 
     def hasOutgoingVehicles(self, timeStep = 1):
         for vehicle in self.vehicles:
@@ -109,7 +119,7 @@ class Road:
             print("Moving car %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
 
-    def giveWay(self, vehicle):
+    def giveWay(self, vehicle): #check if the vehicle stops everytime without checking if the road is free
         vehicle.giveWay(self.length)
     
     def limitSpeed(self, vehicle):
@@ -155,6 +165,28 @@ class Road:
     def getSemaphorePosition(self, semaphore):
         if semaphore in self.semaphores:
             return semaphore.position if semaphore.position != -1 else self.length #if the semaphore is at the end of the road, I return the length of the road
+    
+    def getEndSemaphore(self):
+        for semaphore in self.semaphores:
+            if semaphore.position == -1:
+                return semaphore
+        return None
+        
+    def isGreen(self, currentTime):
+        LastSemaphore = self.getLastSemaphore()
+        if LastSemaphore != None:
+            return LastSemaphore.isGreen(currentTime)
+        return True
+        
+    def removeSemaphore(self, semaphore):
+        self.semaphores.remove(semaphore)
+    
+    def removeSemaphoreAtEnd(self):
+        semaphores = self.semaphores
+        for semaphore in semaphores:
+            if semaphore.position == -1:
+                self.semaphores.remove(semaphore)
+                return semaphore
         
     def getPriority(self):
         return self.priority
@@ -170,6 +202,17 @@ class Semaphore:
         self.yellowTime = yellowTime
         self.startTime = startTime
         self.totalCycleTime = self.greenTime + self.redTime + self.yellowTime
+
+    @staticmethod
+    def createOppositeSemaphore(sem): #this function is used to create a semaphore for an X intersection
+        #I create a semaphore with the same start time, yellow time and position, but with red = green and green = red - yellow
+        newGreen = sem.redTime - sem.yellowTime
+        newYellow = sem.yellowTime
+        if newGreen <= 0:
+            newGreen = sem.redTime
+            newYellow = 0
+        newRed = sem.greenTime
+        return Semaphore(newGreen, newRed, sem.position, newYellow, sem.startTime)
 
     def getState(self, currentTime):
         if currentTime >= self.startTime:
@@ -201,7 +244,7 @@ class Junction:
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         pass
 
-class Bifurcation(Junction):
+class Bifurcation(Junction): #I can use NFurcation instead of Bifurcation with 2 outgoing roads
     def __init__(self, id, incomingRoad, outgoingRoad1, outgoingRoad2, flux1):
         self.id = id
         self.incomingRoad = incomingRoad
@@ -224,7 +267,7 @@ class Bifurcation(Junction):
             print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
             nextRoad.addVehicle(vehicle, currentTime, position)
 
-class NFurcation(Junction):
+class NFurcation(Junction): #1 incoming road, n outgoing roads
     def __init__(self, id, incomingRoad = None, outgoingRoads = [], fluxes = []):
         self.id = id
         self.incomingRoad = incomingRoad
@@ -267,7 +310,7 @@ class NFurcation(Junction):
             print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
             nextRoad.addVehicle(vehicle, currentTime, position)
 
-class Merge(Junction):
+class Merge(Junction): #2 incoming roads, 1 outgoing road
     def __init__(self, id, incomingRoad1, incomingRoad2, outgoingRoad):
         self.id = id
         self.incomingRoad1 = incomingRoad1
@@ -288,35 +331,100 @@ class Merge(Junction):
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad1.vehicles or vehicle in self.incomingRoad2.vehicles:
-            fromRoad = self.incomingRoad1 if vehicle in self.incomingRoad1.vehicles else self.incomingRoad2
-            print("Car %d is at the merge" % vehicle.id)
-            print("Removing car %d from road %d" % (vehicle.id, fromRoad.id))
-            fromRoad.removeVehicle(vehicle)
+            fromRoad = self.incomingRoad1 if vehicle in self.incomingRoad1.vehicles else self.incomingRoad2 #I get the road from which the vehicle comes
 
-            
-            if fromRoad == self.priorityRoad:
+            if fromRoad == self.priorityRoad or not self.priorityRoad.hasOutgoingVehicles(timeStep): #if the vehicle comes from the priority road or the priority road is free
+                fromRoad.removeVehicle(vehicle)
                 self.outgoingRoad.addVehicle(vehicle, currentTime, position)
             else:
                 fromRoad.giveWay(vehicle)
 
-class Intersection(Junction):
-    def __init__(self, id, incomingRoads, outgoingRoads):
+class Intersection(Junction): #n incoming roads, n outgoing roads
+    def __init__(self, id, incomingRoads = [], outgoingRoads = [], incomingRoadsFluxes = [], outgoingRoadsFluxes = []):
         self.id = id
         self.incomingRoads = incomingRoads
         self.outgoingRoads = outgoingRoads
+        self.incomingRoadsFluxes = incomingRoadsFluxes
+        self.outgoingRoadsFluxes = outgoingRoadsFluxes
 
+    def addIncomingRoad(self, road, semaphore = None): #semaphores must be synchronized setting same start time and opposite green and red times
+        self.incomingRoads.append(road)
+        road.addEndJunction(self)
+        if semaphore != None:
+            road.addSemaphoreAtEnd(semaphore)
+    
+    def addOutgoingRoad(self, road, flux):
+        self.outgoingRoads.append(road)
+        self.outgoingRoadsFluxes.append(flux)
+        road.addStartJunction(self)
+
+    def incomingRoad(self, vehicle):
+        for road in self.incomingRoads:
+            if vehicle in road.vehicles:
+                return road
+        return None
+
+    def getPriorityRoad(self):
+        if self.incomingRoads == None:
+            print("Error: intersection has no incoming roads")
+            return None
+        priorityRoad = None
+        for road in self.incomingRoads: #get the first road that is not red
+            if road.isGreen():
+                priorityRoad = road
+                break
+        if priorityRoad == None:
+            return None
+        for road in self.incomingRoads:
+            if road.getPriority() < priorityRoad.getPriority() and road.isGreen():
+                priorityRoad = road
+        return priorityRoad
+
+    def getNextRoad(self):
+        chosenRoad = 0
+        for i in range(len(self.outgoingRoadsFluxes)):
+            if randomValue < self.outgoingRoadsFluxes[i]:
+                chosenRoad = i
+                break
+            randomValue -= self.outgoingRoadsFluxes[i]
+        nextRoad = self.outgoingRoads[chosenRoad]
+        return nextRoad
+    
+    def canGo(self, road):
+        #I take every road with highest priority (lowest number) that has Green and has outgoing vehicles, if there is no such road I return True
+        if self.incomingRoads == None:
+            return False
+        for r in self.incomingRoads:
+            if r.getPriority() < road.getPriority() and r.isGreen() and r.hasOutgoingVehicles():
+                return False
+        return True
+    
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
-        if vehicle in self.incomingRoad.vehicles:
-            print("Car %d is at the intersection" % vehicle.id)
-            nextRoad = self.outgoingRoads[random.randint(0, len(self.outgoingRoads)-1)]
-            print("Removing car %d from road %d" % (vehicle.id, self.incomingRoad.id))
-            self.incomingRoad.removeVehicle(vehicle)
-            print("Adding car %d to road %d" % (vehicle.id, nextRoad.id))
-            nextRoad.addVehicle(vehicle, currentTime, position)
+        if self.incomingRoads == None:
+            print("Error: intersection has no incoming roads")
+            return
+        incRoad = self.incomingRoad(vehicle)
+        if incRoad != None:
+            if self.outgoingRoads == None or self.outgoingRoadsFluxes == None:
+                if incRoad != None:
+                    incRoad.removeVehicle(vehicle)
+                print("Error: intersection has no outgoing roads")
+                return
+            randomValue = random.uniform(0,1)
+            #fluxes represent the probability of going to each road, given randomValue I choose the next road
+            nextRoad = self.getNextRoad()
+            priorityRoad = self.getPriorityRoad()
+            canGo = self.canGo(incRoad)
+            if canGo:
+                nextRoad.addVehicle(vehicle, currentTime, position)
+                incRoad.removeVehicle(vehicle)
+            else:
+                incRoad.giveWay(vehicle)
 
-#TODO: add intersection with semaphores
 
-#TODO: functions to handle initialization of networks
+#TODO: add intersection with semaphores, add priority to roads, add priority to vehicles, add vehicle types, add vehicle types to roads, add vehicle types to junctions
+
+#TODO: Factory classes with functions to handle initialization of networks
 
 # carreggiata, è composta da n corsie
 #class Roadway:
