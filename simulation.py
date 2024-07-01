@@ -39,7 +39,7 @@ def simulate():
     for i in range(600):
         time = i * timeStep
         speed = random.uniform(minSpeed, maxSpeed)
-        if i < 500:
+        if i < 5:
             cars.append(Vehicle(i, carLength, startingPosition, speed, 0, topSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
             lane1.addVehicle(cars[i], time)
         lane1.moveVehicles(time,timeStep)
@@ -49,8 +49,11 @@ def simulate():
         lane2History.saveState(lane2, time)
         lane3History.saveState(lane3, time)
         print("Time: %d" % i)
-        for c in cars:
-            print("Car %d: position: %fm, speed: %fm/s" % (c.id, c.position, c.speed))
+        lane = lane1 if lane1.hasVehicle(i) else lane2 if lane2.hasVehicle(i) else lane3
+        print("Car 0: position: %fm, speed: %fm/s, in lane %d" % (cars[0].position, cars[0].speed, lane.id))
+        #for c in cars:
+            #if c.position < 0:
+                #print("Car %d: position: %fm, speed: %fm/s" % (c.id, c.position, c.speed))
 
     #laneHistory.printHistory()
     lane1History.saveHistory("lane1.json")

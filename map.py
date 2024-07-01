@@ -18,13 +18,17 @@ class Lane:
 
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the lane and returns the position of the vehicle
         # I check if there is a vehicle too close
-        self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the lane, so I reset it to 0
+        self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the lane, so I reset it to 0 in case it's coming from another lane
         precedingVehicle = self.precedingVehicle(vehicle)
         firstSem = self.getFirstSemaphore()
         if precedingVehicle != None:
+            previousVehiclePosition = precedingVehicle.getPosition()
             safetyPosition = self.safetyDistanceFrom(precedingVehicle)
+            if previousVehiclePosition < 0:
+                print("Vehichle %d has negative position: %f" % (precedingVehicle.id, previousVehiclePosition)) #non arriva mai qui?? capisci dov'è che decrementa la posizione
+                safetyPosition = previousVehiclePosition
             if safetyPosition <= 0:
-                vehicle.stopAtVehicle(safetyPosition)
+                vehicle.stopAtVehicle(safetyPosition) #solve increasing negative position problem
             else:
                 self.limitSpeed(vehicle)
         elif firstSem != None and firstSem.isRed(currentTime) and position >= firstSem.position:
@@ -79,7 +83,9 @@ class Lane:
             if not vehicle.isGivingWay(): #if the vehicle is not giving way
                 if vehicle.isStopped():
                     if freeLane: #if the lane is free
-                        vehicle.restart(timeStep)
+                        pos = vehicle.restart(timeStep)
+                        if precedingVeh != None and pos > self.safetyDistanceFrom(precedingVeh):
+                            vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                     elif redSemInFront: #if the next semaphore is red
                         pass
                     elif not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
@@ -123,7 +129,7 @@ class Lane:
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.vehicles[:] #I iterate over a copy of the list
         for vehicle in tmp:
-            print("Moving car %d" % vehicle.id)
+            #print("Moving car %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
 
     def waitForNextLane(self, vehicle, pos):
@@ -220,6 +226,12 @@ class Lane:
         
     def resetVehiclePosition(self, vehicle):
         vehicle.setPosition(0)
+
+    def hasVehicle(self, vehicle):
+        for v in self.vehicles:
+            if v == vehicle:
+                return True
+        return False
 
 class Semaphore:
     def __init__(self, greenTime, redTime, position = -1, yellowTime = 0, startTime = 0):
@@ -464,6 +476,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
             else:
                 incomingLane.giveWay(vehicle)
 
+#TODO: Solve: position 13,3 when speed 11,7. Resetting position to 0 when changing lane. Negative position when following vehicle is stopped
 #TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks

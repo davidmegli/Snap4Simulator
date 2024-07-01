@@ -4,6 +4,7 @@
 """
 import random
 
+#TODO: add counters to count time waited (stopped, speed=0), time waited at semaphores (in class Vehicle or in VehicleState in data.py?)
 class Vehicle:
     STATE_STOPPED = "stopped"
     STATE_MOVING = "moving"
@@ -102,6 +103,7 @@ class Vehicle:
         self.setSpeed(self.initialSpeed)
         self.setAcceleration(0)
         self.setPosition(self.calculatePosition(timeStep))
+        return self.getPosition()
 
     def getState(self):
         return (self.position, self.speed, self.acceleration)
