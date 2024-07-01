@@ -34,13 +34,15 @@ class Lane:
         precedingVehicle = self.precedingVehicle(vehicle)
         firstSem = self.getFirstSemaphore()
         if precedingVehicle != None:
-            previousVehiclePosition = precedingVehicle.getPosition()
+            precedingVehiclePosition = precedingVehicle.getPosition()
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
-            if previousVehiclePosition < 0:
-                print("Vehichle %d has negative position: %f" % (precedingVehicle.id, previousVehiclePosition)) #non arriva mai qui?? capisci dov'è che decrementa la posizione
-                safetyPosition = previousVehiclePosition
+            if precedingVehiclePosition < 0:
+                position = safetyPosition
+                print("Vehicle %d has negative position: %f" % (precedingVehicle.id, precedingVehiclePosition)) #non arriva mai qui?? capisci dov'è che decrementa la posizione
             if safetyPosition <= 0:
-                vehicle.stopAtVehicle(safetyPosition) #solve increasing negative position problem
+                position = safetyPosition
+                print("Vehicle %d is too close to the previous vehicle, setting position to %f" % (vehicle.id, safetyPosition)) 
+                vehicle.stopAtVehicle(0) #solve increasing negative position problem
             else:
                 self.limitSpeed(vehicle)
         elif firstSem != None and firstSem.isRed(currentTime) and position >= firstSem.position:
@@ -97,14 +99,22 @@ class Lane:
                     if freeLane: #if the lane is free
                         pos = vehicle.restart(timeStep)
                         if precedingVeh != None and pos > self.safetyPositionFrom(precedingVeh):
-                            vehicle.followVehicle(precedingVeh,self.vehicleDistance)
+                            if self.safetyPositionFrom(precedingVeh) >= 0:
+                                vehicle.followVehicle(precedingVeh,self.vehicleDistance)
+                            else:
+                                vehicle.stopAtVehicle(0)
                     elif redSemInFront: #if the next semaphore is red
                         pass
-                    elif not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
-                        vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
+                    elif precedingVeh != None and not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
+                        if self.safetyPositionFrom(precedingVeh) >= 0:
+                            pos = vehicle.restart(timeStep)
+                            if pos > self.safetyPositionFrom(precedingVeh):
+                                vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                 else: #if the vehicle is moving
                     if freeLane: #if the lane is free
                         vehicle.move(timeStep)
+                        if precedingVeh != None and vehicle.getPosition() > self.safetyPositionFrom(precedingVeh):
+                            vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                     elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
                         if nextSemPos < self.safetyPositionFrom(precedingVeh): #if the red semaphore is closer
                             vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
@@ -170,6 +180,8 @@ class Lane:
                 if i > 0:
                     return self.vehicles[i-1]
                 return None
+        if len(self.vehicles) > 0:
+            return self.vehicles[-1] #if the vehicle is not in the list, I return the last vehicle
         return None
     
     def followingVehicle(self, vehicle): #I get the following vehicle of the current vehicle, Vehicles must be ordered by position
@@ -498,7 +510,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
             else:
                 incomingLane.giveWay(vehicle)
 
-#TODO: Negative position when following vehicle is stopped. Changing speed when changing lane.
+#TODO: Changing speed when changing lane.
 #TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks
