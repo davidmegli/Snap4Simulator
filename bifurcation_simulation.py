@@ -24,6 +24,7 @@ def simulate():
     simulationCycles = 250
     spawningRate = 10 #instantiate one vehicle every x cycles
     numberOfLanes = 3
+    outputFile = "bifurcation_simulation_output.txt"
     lanes = []
     laneHistories = []
     for i in range(numberOfLanes):
@@ -31,7 +32,7 @@ def simulate():
         laneHistories.append(LaneHistory(lanes[i], laneLength / sectorsPerLane)) #lane, sectorLength
     cars = []
     bifurcation = Bifurcation(0, lanes[0], lanes[1], lanes[2], 0.2) #id, incomingLane, outgoingLane1, outgoingLane2, flux1 (probability to go to lane 1)
-    f = open("bifurcation_simulation_output.txt", "w")
+    f = open(outputFile, "w")
     print("Lanes are 1000m long, with a speed limit of 50 km/h", file=f)
     print("Simulation cycles: %d, time step: %ds" % (simulationCycles, timeStep), file=f)
     print("Injecting vehicles in lane 0 with random speed between 40 km/h and 80 km/h each %d cycles" % spawningRate, file=f)

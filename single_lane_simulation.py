@@ -29,8 +29,9 @@ def simulate():
     lane1 = Lane(0, laneLength, 1, 50/3.6,) #id, length, vehicleDistance, speedLimit
     #lane1.addSemaphore(semaphore)
     lane1History = LaneHistory(lane1, laneLength / sectorsPerLane) #lane, sectorLength
+    outputFile = "single_lane_simulation_output.txt"
     cars = []
-    f = open("single_lane_simulation_output.txt", "w")
+    f = open(outputFile, "w")
     print("Lane is 1000m long, with a speed limit of 50 km/h", file=f)
     print("Simulation cycles: %d, time step: %ds" % (simulationCycles, timeStep), file=f)
     print("Injecting vehicles in lane 0 with random speed between 40 km/h and 80 km/h each %d cycles" % spawningRate, file=f)
