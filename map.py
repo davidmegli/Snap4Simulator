@@ -35,7 +35,7 @@ class Lane:
         firstSem = self.getFirstSemaphore()
         if precedingVehicle != None:
             previousVehiclePosition = precedingVehicle.getPosition()
-            safetyPosition = self.safetyDistanceFrom(precedingVehicle)
+            safetyPosition = self.safetyPositionFrom(precedingVehicle)
             if previousVehiclePosition < 0:
                 print("Vehichle %d has negative position: %f" % (precedingVehicle.id, previousVehiclePosition)) #non arriva mai qui?? capisci dov'è che decrementa la posizione
                 safetyPosition = previousVehiclePosition
@@ -89,14 +89,14 @@ class Lane:
             nextSem = self.getNextSemaphore(vehicle.getPosition()) #I get the next semaphore
             nextSemPos = self.getSemaphorePosition(nextSem) if nextSem != None else -2 #I get the position of the semaphore
             redSemInFront = nextSem != None and nextSem.isRed(currentTime) and nextPos >= nextSemPos
-            vehicleInFront = precedingVeh != None and nextPos > self.safetyDistanceFrom(precedingVeh)
+            vehicleInFront = precedingVeh != None and nextPos > self.safetyPositionFrom(precedingVeh)
             freeLane = not redSemInFront and not vehicleInFront
 
             if not vehicle.isGivingWay(): #if the vehicle is not giving way
                 if vehicle.isStopped():
                     if freeLane: #if the lane is free
                         pos = vehicle.restart(timeStep)
-                        if precedingVeh != None and pos > self.safetyDistanceFrom(precedingVeh):
+                        if precedingVeh != None and pos > self.safetyPositionFrom(precedingVeh):
                             vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                     elif redSemInFront: #if the next semaphore is red
                         pass
@@ -106,7 +106,7 @@ class Lane:
                     if freeLane: #if the lane is free
                         vehicle.move(timeStep)
                     elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
-                        if nextSemPos < self.safetyDistanceFrom(precedingVeh): #if the red semaphore is closer
+                        if nextSemPos < self.safetyPositionFrom(precedingVeh): #if the red semaphore is closer
                             vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
                         else: #if the vehicle in front is closer
                             vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
@@ -130,8 +130,11 @@ class Lane:
     def endOfLaneHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
             if self.endJunction != None: #if there is a junction at the end of the lane
+                print("Vehicle %d reached the end of lane %d" % (vehicle.id, self.id))
                 self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
-                print("Car %d reached the end of lane %d" % (vehicle.id, self.id))
+            else:
+                self.removeVehicle(vehicle)
+                print("Vehicle %d reached the end of lane %d and was removed" % (vehicle.id, self.id))
 
     def hasOutgoingVehicles(self, timeStep = 1):
         for vehicle in self.vehicles:
@@ -141,13 +144,14 @@ class Lane:
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.vehicles[:] #I iterate over a copy of the list
         for vehicle in tmp:
-            #print("Moving car %d" % vehicle.id)
+            #print("Moving vehicle %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
 
-    def waitForNextLane(self, vehicle, pos):
-        safePos = self.safetyDistanceFromFollowingVehicleOf(vehicle)
-        if pos >= safePos:
-            vehicle.GiveWay(pos)
+    def waitForNextLane(self, vehicle, posToWaitAt):
+        followingVehicle = self.followingVehicle(vehicle)
+        safePos = self.safetyPositionFromFollowingVehicleOf(followingVehicle) if followingVehicle != None else 0
+        if posToWaitAt >= safePos:
+            vehicle.GiveWay(posToWaitAt)
         elif safePos < self.length:
             vehicle.GiveWay(safePos)
         else:
@@ -176,10 +180,10 @@ class Lane:
                 return None
         return None
     
-    def safetyDistanceFrom(self, vehicle):
+    def safetyPositionFrom(self, vehicle):
         return vehicle.position - self.vehicleDistance - vehicle.length
     
-    def safetyDistanceFromFollowingVehicleOf(self, vehicle):
+    def safetyPositionFromFollowingVehicleOf(self, vehicle):
         return vehicle.position + self.vehicleDistance + vehicle.length
 
     def removeVehicle(self, vehicle):
@@ -311,10 +315,10 @@ class Bifurcation(Junction): #I can use NFurcation instead of Bifurcation with 2
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingLane.vehicles:
-            print("Car %d is at the bifurcation" % vehicle.id)
+            print("Vehicle %d is at the bifurcation" % vehicle.id)
             nextLane = self.outgoingLane1 if random.uniform(0,1) < self.flux1 else self.outgoingLane2
-            print("Removing car %d from lane %d" % (vehicle.id, self.incomingLane.id))
-            print("Adding car %d to lane %d" % (vehicle.id, nextLane.id))
+            print("Removing vehicle %d from lane %d" % (vehicle.id, self.incomingLane.id))
+            print("Adding vehicle %d to lane %d" % (vehicle.id, nextLane.id))
             pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
             if pos < 0: #if the vehicle cannot be added to the next lane
                 pos += self.incomingLane.length
@@ -344,23 +348,28 @@ class NFurcation(Junction): #1 incoming lane, n outgoing lanes
         self.incomingLane = lane
         lane.addEndJunction(self)
 
+    def getNextLane(self):
+        randomValue = random.uniform(0,1)
+        chosenLane = 0
+        for i in range(len(self.fluxes)):
+            if randomValue < self.fluxes[i]:
+                chosenLane = i
+                break
+            randomValue -= self.fluxes[i]
+        nextLane = self.outgoingLanes[chosenLane]
+        return nextLane
+    
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingLane.vehicles:
-            print("Car %d is at the n-furcation" % vehicle.id)
+            print("Vehicle %d is at the n-furcation" % vehicle.id)
             if self.outgoingLanes == None or self.fluxes == None:
                 if self.incomingLane != None:
                     self.incomingLane.removeVehicle(vehicle)
                 print("Error: n-furcation has no outgoing lanes")
                 return
-            randomValue = random.uniform(0,1)
             #fluxes represent the probability of going to each lane, given randomValue I choose the next lane
-            chosenLane = 0
-            for i in range(len(self.fluxes)):
-                if randomValue < self.fluxes[i]:
-                    chosenLane = i
-                    break
-                randomValue -= self.fluxes[i]
-            nextLane = self.outgoingLanes[chosenLane]
+            nextLane = self.getNextLane()
+            print("NFurcation: Vehicle %d is going from lane %d to lane %d" % (vehicle.id, self.incomingLane.id, nextLane.id))
             pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
             if pos < 0: #if the vehicle cannot be added to the next lane
                 pos += self.incomingLane.length
@@ -397,6 +406,7 @@ class Merge(Junction): #2 incoming lanes, 1 outgoing lane
                     pos += fromLane.length
                     self.incomingLane.waitForNextLane(vehicle,pos)
                 else:
+                    print("Merge: Vehicle %d is going from lane %d to lane %d" % (vehicle.id, fromLane.id, self.outgoingLane.id))
                     fromLane.removeVehicle(vehicle)
             else:
                 fromLane.giveWay(vehicle)
@@ -488,7 +498,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
             else:
                 incomingLane.giveWay(vehicle)
 
-#TODO: Solve: position 13,3 when speed 11,7. Resetting position to 0 when changing lane. Negative position when following vehicle is stopped
+#TODO: Negative position when following vehicle is stopped. Changing speed when changing lane.
 #TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks
