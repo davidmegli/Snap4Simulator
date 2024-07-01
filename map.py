@@ -510,7 +510,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
             else:
                 incomingLane.giveWay(vehicle)
 
-#TODO: Changing speed when changing lane.
+#TODO: Solve: Changing speed when changing lane.
 #TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks
