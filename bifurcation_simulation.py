@@ -52,6 +52,6 @@ def simulate():
                     print("Vehicle %d: position: %fm, speed: %fm/s, acceleration: %fm/s^2, in lane %d" % (car.id, car.position, car.speed, car.acceleration, lane.id), file=f)
     #laneHistory.printHistory()
     #lane1History.saveHistory("single_lane_lane1.json")
-
+    #FIXME: sometimes when giving way to another vehicle at the end of a lane in a merge, the vehicle remains stopped for some (2?) cycles, then moves again
 if __name__ == "__main__":
     simulate()

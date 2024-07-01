@@ -426,7 +426,7 @@ class Merge(Junction): #2 incoming lanes, 1 outgoing lane
                 pos = self.outgoingLane.tryAddVehicle(vehicle, currentTime, position)
                 if pos < 0: #if the vehicle cannot be added to the next lane
                     pos += fromLane.length
-                    self.incomingLane.waitForNextLane(vehicle,pos)
+                    fromLane.waitForNextLane(vehicle,pos)
                 else:
                     print("Merge: Vehicle %d is going from lane %d to lane %d" % (vehicle.id, fromLane.id, self.outgoingLane.id))
                     fromLane.removeVehicle(vehicle)
@@ -520,7 +520,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
             else:
                 incomingLane.giveWay(vehicle)
 
-#TODO: Solve: Changing speed when changing lane.
+#FIXME: Solve: Changing speed when changing lane.
 #TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks

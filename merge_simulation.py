@@ -18,18 +18,18 @@ def simulate():
     maxAcceleration = 0.8 #0.8 m/s^2
     vehicleLength = 5 #5m
     startingPosition = 0
-    timeStep = 2 #cycle steps in seconds
+    timeStep = 1 #cycle steps in seconds
     sectorsPerLane = 10 #number of sectors in the lane
     laneLength = 500 #meters
     outgoingLaneLength = 1000 #meters
     simulationCycles = 250
-    spawningRate = 10 #instantiate one vehicle every x cycles
+    spawningRate = 1 #instantiate one vehicle every x cycles
     numberOfLanes = 3
     outputFile = "merge_simulation_output.txt"
     lanes = []
     laneHistories = []
     for i in range(numberOfLanes):
-        lanes.append(Lane(i, laneLength, 1, 50/3.6,)) #id, length, vehicleDistance, speedLimit
+        lanes.append(Lane(i, laneLength, 1, 50/3.6,None,None,None,numberOfLanes-i)) #id, length, vehicleDistance, speedLimit, semaphore, endJunction, startJunction, lane priority
         laneHistories.append(LaneHistory(lanes[i], laneLength / sectorsPerLane)) #lane, sectorLength
     cars = []
     merge = Merge(0, lanes[0], lanes[1], lanes[2]) #id, incomingLane1, incomingLane2, outgoingLane
@@ -42,7 +42,7 @@ def simulate():
         speed = random.uniform(minVehicleSpeed, maxVehicleSpeed)
         if i % spawningRate == 0:
             cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, speed, 0, topVehicleSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
-            lanes[0].addVehicle(cars[i//spawningRate], time)
+            lanes[random.randint(0,1)].addVehicle(cars[i//spawningRate], time)
         for lane in lanes:
             lane.moveVehicles(time,timeStep)
             laneHistories[lanes.index(lane)].saveState(lane, time)
