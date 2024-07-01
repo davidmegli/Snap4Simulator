@@ -32,6 +32,7 @@ class Vehicle:
         self.setPosition(initialPosition)
         self.setSpeed(initialSpeed) #m/s
         self.setAcceleration(initialAcceleration) #m/s^2
+        self.lastUpdate = creationTime
 
     def getPosition(self):
         return self.position

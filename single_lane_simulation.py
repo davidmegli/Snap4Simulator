@@ -1,5 +1,5 @@
 """
-@file    single_road_simulation.py
+@file    single_lane_simulation.py
 @author  David Megli
 
 Description:
@@ -30,7 +30,7 @@ def simulate():
     #lane1.addSemaphore(semaphore)
     lane1History = LaneHistory(lane1, laneLength / sectorsPerLane) #lane, sectorLength
     cars = []
-    f = open("single_road_simulation_output.txt", "w")
+    f = open("single_lane_simulation_output.txt", "w")
     print("Lane is 1000m long, with a speed limit of 50 km/h", file=f)
     print("Simulation cycles: %d, time step: %ds" % (simulationCycles, timeStep), file=f)
     print("Injecting vehicles in lane 0 with random speed between 40 km/h and 80 km/h each %d cycles" % spawningRate, file=f)
@@ -46,7 +46,7 @@ def simulate():
         for car in cars:
             print("Vehicle %d: position: %fm, speed: %fm/s, acceleration: %fm/s^2, in lane %d" % (car.id, car.position, car.speed, car.acceleration, lane1.id), file=f)
     #laneHistory.printHistory()
-    lane1History.saveHistory("single_road_lane1.json")
+    lane1History.saveHistory("single_lane_lane1.json")
 
 if __name__ == "__main__":
     simulate()

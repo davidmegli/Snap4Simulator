@@ -44,10 +44,17 @@ class Lane:
                 print("Vehicle %d is too close to the previous vehicle, setting position to %f" % (vehicle.id, safetyPosition)) 
                 vehicle.stopAtVehicle(0) #solve increasing negative position problem
             else:
-                self.limitSpeed(vehicle)
+                if position > safetyPosition:
+                    vehicle.followVehicle(precedingVehicle,self.vehicleDistance)
+                else:
+                    vehicle.setPosition(position)
+            self.limitSpeed(vehicle)
         elif firstSem != None and firstSem.isRed(currentTime) and position >= firstSem.position:
             vehicle.stopAtSemaphore(firstSem.position)
         else:
+            print("Adding vehicle %d to lane %d at position %f" % (vehicle.id, self.id, position)) #TODO: solve here bug causing vehicles to stop, debug the next cycle
+            print("Vehicle speed: %f" % vehicle.getSpeed())
+            vehicle.setPosition(position)
             self.limitSpeed(vehicle)
         self.vehicles.append(vehicle)
         return position
@@ -84,6 +91,8 @@ class Lane:
     def moveVehicle(self, vehicle, currentTime, timeStep = 1):
         # If the vehicle is in the lane, I get its future position, if the position is in the next sector I check if it is not full, if it's not full
         # I move the vehicle to the next sector and call the move method of the vehicle, otherwise I call the stopAt method of the vehicle to stop it
+        if vehicle.lastUpdate == currentTime:
+            return False
         if vehicle in self.vehicles: #if the vehicle is on the lane
             currentPos = vehicle.getPosition()
             nextPos = vehicle.calculatePosition(timeStep) #I get the future position of the vehicle based on current speed and acceleration
@@ -134,6 +143,7 @@ class Lane:
                 ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the lane
                 self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfLaneHandler will decide if the vehicle can go or has to keep waiting
 
+            vehicle.lastUpdate = currentTime
             return True
         return False
     
@@ -161,11 +171,11 @@ class Lane:
         followingVehicle = self.followingVehicle(vehicle)
         safePos = self.safetyPositionFromFollowingVehicleOf(followingVehicle) if followingVehicle != None else 0
         if posToWaitAt >= safePos:
-            vehicle.GiveWay(posToWaitAt)
+            vehicle.giveWay(posToWaitAt)
         elif safePos < self.length:
-            vehicle.GiveWay(safePos)
+            vehicle.giveWay(safePos)
         else:
-            vehicle.GiveWay(self.length)
+            vehicle.giveWay(self.length)
 
     def giveWay(self, vehicle): #check if the vehicle stops everytime without checking if the lane is free
         vehicle.giveWay(self.length)
@@ -329,15 +339,15 @@ class Bifurcation(Junction): #I can use NFurcation instead of Bifurcation with 2
         if vehicle in self.incomingLane.vehicles:
             print("Vehicle %d is at the bifurcation" % vehicle.id)
             nextLane = self.outgoingLane1 if random.uniform(0,1) < self.flux1 else self.outgoingLane2
-            print("Removing vehicle %d from lane %d" % (vehicle.id, self.incomingLane.id))
-            print("Adding vehicle %d to lane %d" % (vehicle.id, nextLane.id))
+            print("Trying to add vehicle %d to lane %d at position %f" % (vehicle.id, nextLane.id, position))
             pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
             if pos < 0: #if the vehicle cannot be added to the next lane
+                print("Vehicle %d cannot be added to lane %d" % (vehicle.id, nextLane.id))
                 pos += self.incomingLane.length
                 self.incomingLane.waitForNextLane(vehicle,pos)
             else:
+                print("Removing vehicle %d from lane %d" % (vehicle.id, self.incomingLane.id))
                 self.incomingLane.removeVehicle(vehicle)
-
 
 class NFurcation(Junction): #1 incoming lane, n outgoing lanes
     def __init__(self, id, incomingLane = None, outgoingLanes = [], fluxes = []):
@@ -517,6 +527,6 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
 
 #TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Roadway > Road > Lane
 #class Roadway:
-
+#TODO: Network class to handle multiple lanes and junctions (maybe all map?), and Simulator class to handle the simulation, and update every Lane etc...
 
 
