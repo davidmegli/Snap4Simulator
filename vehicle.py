@@ -1,10 +1,17 @@
 """
 @file    vehicle.py
 @author  David Megli
+
+Desctiption:
+This file the classes to handle vehicles in the simulation.
+Class Vehicle handles the state of the vehicle (position on the lane, speed, acceleration) and its movement.
+The class has methods to calculate the position, speed and acceleration of the vehicle in the next time step (default time step is 1 second).
+The class has methods to stop the vehicle, move it to a given position, restart it, follow another vehicle at a given distance, stop at a given position,
+stop at a semaphore, stop at a vehicle, give way to another vehicle, and restart the vehicle.
+I used constants to define the states a vehicle can be in
 """
 import random
 
-#TODO: add counters to count time waited (stopped, speed=0), time waited at semaphores (in class Vehicle or in VehicleState in data.py?)
 class Vehicle:
     STATE_STOPPED = "stopped"
     STATE_MOVING = "moving"
@@ -168,3 +175,7 @@ class Pedestrian(Vehicle):
         maxSpeed = 5.56 #m/s = 20 km/h
         maxAcceleration = 0.2 #m/s^2
         super().__init__(id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration)
+
+
+        
+#TODO: add counters to count time waited (stopped, speed=0), time waited at semaphores (in class Vehicle or in VehicleState in data.py?)

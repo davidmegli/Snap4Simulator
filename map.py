@@ -1,6 +1,18 @@
 """
 @file    map.py
 @author  David Megli
+
+Description:
+This file contains the classes that represent the map of the simulation.
+The map is composed of lanes, semaphores and junctions.
+Lanes have length and speed limit properties. They handle all the vehicles that are on them, stored in a list, throught the moveVehicle method.
+A Lane can contain a Semaphore, in the moveVehicles is checked the presence of red semaphores and vehicles in front of the current vehicle.
+A Lane can also contain a Junction, that can be a Bifurcation, NFurcation, Merge or Intersection, and handle the vehicles that reach it and the subsequent lanes.
+Bifurcation = 1 incoming lane, 2 outgoing lanes
+NFurcation = 1 incoming lane, n outgoing lanes
+Merge = 2 incoming lanes, 1 outgoing lane
+Intersection = n incoming lanes, n outgoing lanes
+Junctions have a handleVehicle method that is called when a vehicle reaches the junction.
 """
 import random
 

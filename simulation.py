@@ -1,6 +1,9 @@
 """
 @file    simulation.py
 @author  David Megli
+
+Description:
+This file simulates the movement of vehicles in a lane with a semaphore and a bifurcation, going back to the original lane.
 """
 from vehicle import Vehicle
 from map import Lane, Semaphore, Junction, Bifurcation, NFurcation, Merge

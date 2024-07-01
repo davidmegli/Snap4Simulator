@@ -1,6 +1,10 @@
 """
 @file    data.py
 @author  David Megli
+
+Description:
+This file contains the classes to handle the history of the map, saving the state of the lanes at different times.
+The classes calculate the number of vehicles and density for each sector of a Lane, and can save the history of the lane in a json file.
 """
 from map import Lane
 import json
