@@ -434,11 +434,14 @@ class Merge(Junction): #2 incoming lanes, 1 outgoing lane
                 fromLane.giveWay(vehicle)
 
 class Intersection(Junction): #n incoming lanes, n outgoing lanes
-    def __init__(self, id, incomingLanes = [], outgoingLanes = [], incomingFluxes = [], outgoingFluxes = []):
+    def __init__(self, id, incomingLanes = [], outgoingLanes = [], outgoingFluxes = []):
         self.id = id
         self.incomingLanes = incomingLanes
+        for lane in incomingLanes:
+            lane.addEndJunction(self)
         self.outgoingLanes = outgoingLanes
-        self.incomingLanesFluxes = incomingFluxes
+        for lane in outgoingLanes:
+            lane.addStartJunction(self)
         self.outgoingLanesFluxes = outgoingFluxes
 
     def addIncomingLane(self, lane, semaphore = None): #semaphores must be synchronized setting same start time and opposite green and red times
@@ -507,14 +510,14 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
                 return
             #fluxes represent the probability of going to each lane, given randomValue I choose the next lane
             nextLane = self.getNextLane()
-            priorityLane = self.getPriorityLane()
+            #priorityLane = self.getPriorityLane()
 
             canGo = self.canGo(incomingLane)
-            if canGo:
-                pos = nextLane.tryAddVehicle(vehicle, currentTime, position)
+            if canGo: #if the vehicle can go (i.e there is no vehicle with higher priority that has green light and outgoing vehicles)
+                pos = nextLane.tryAddVehicle(vehicle, currentTime, position) #retuns the new position, <0 if the vehicle cannot be added
                 if pos < 0: #if the vehicle cannot be added to the next lane
-                    pos += incomingLane.length
-                    self.incomingLane.waitForNextLane(vehicle, pos)
+                    pos += incomingLane.length #I calculate the position where to wait in the incoming lane
+                    self.incomingLane.waitForNextLane(vehicle, pos) #I make the vehicle wait in the incoming lane
                 else:
                     incomingLane.removeVehicle(vehicle)
             else:
@@ -528,5 +531,6 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
 #TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Roadway > Road > Lane
 #class Roadway:
 #TODO: Network class to handle multiple lanes and junctions (maybe all map?), and Simulator class to handle the simulation, and update every Lane etc...
+#Simulation class will also handle the history of the entirye Network (or Map), and have a saveHistory function to save the entire history of the map in a json file
 
 

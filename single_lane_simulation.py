@@ -19,14 +19,14 @@ def simulate():
     vehicleLength = 5 #5m
     startingPosition = 0
     timeStep = 2 #cycle steps in seconds
-    spawningRate = 2 #instantiate one vehicle every x cycles
+    spawningRate = 5 #instantiate one vehicle every x cycles
     sectorsPerLane = 10 #number of sectors in the lane
     laneLength = 1000 #meters
     simulationCycles = 250
     greenLight = 60 #seconds
     redLight = 30 #seconds
     semaphore = Semaphore(greenLight, redLight, laneLength/2, 0, 0)
-    lane1 = Lane(0, laneLength, 1, 50/3.6,) #id, length, vehicleDistance, speedLimit
+    lane1 = Lane(0, laneLength, 1, 100/3.6,) #id, length, vehicleDistance, speedLimit
     #lane1.addSemaphore(semaphore)
     lane1History = LaneHistory(lane1, laneLength / sectorsPerLane) #lane, sectorLength
     outputFile = "single_lane_simulation_output.txt"
@@ -39,7 +39,7 @@ def simulate():
         time = i * timeStep
         speed = random.uniform(minVehicleSpeed, maxVehicleSpeed)
         if i % spawningRate == 0:
-            cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, speed, 0, topVehicleSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
+            cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, speed+i, 0, topVehicleSpeed, maxAcceleration, True, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
             lane1.addVehicle(cars[i//spawningRate], time)
         lane1.moveVehicles(time,timeStep)
         lane1History.saveState(lane1, time)

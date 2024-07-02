@@ -1,5 +1,5 @@
 """
-@file    merge.py
+@file    merge_simulation.py
 @author  David Megli
 
 Description:
@@ -36,7 +36,7 @@ def simulate():
     f = open(outputFile, "w")
     print("Lanes are 1000m long, with a speed limit of 50 km/h", file=f)
     print("Simulation cycles: %d, time step: %ds" % (simulationCycles, timeStep), file=f)
-    print("Injecting vehicles in lane 0 with random speed between 40 km/h and 80 km/h each %d cycles" % spawningRate, file=f)
+    print("Injecting vehicles in a random lane between 0 and 1 with random speed between 40 km/h and 80 km/h each %d cycles" % spawningRate, file=f)
     for i in range(simulationCycles):
         time = i * timeStep
         speed = random.uniform(minVehicleSpeed, maxVehicleSpeed)
