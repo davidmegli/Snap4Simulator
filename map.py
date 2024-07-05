@@ -16,6 +16,52 @@ Junctions have a handleVehicle method that is called when a vehicle reaches the 
 """
 import random
 
+class Road:
+    pass
+
+class RoadWay:
+    def __init__(self, id, lanes = []):
+        self.id = id
+        self.lanes = lanes
+
+    def addLane(self, lane):
+        self.lanes.append(lane)
+
+    def removeLane(self, lane):
+        self.lanes.remove(lane)
+
+    def getLane(self, id):
+        for lane in self.lanes:
+            if lane.id == id:
+                return lane
+            
+    def getLaneWithVehicle(self, vehicle):
+        for lane in self.lanes:
+            if lane.hasVehicle(vehicle):
+                return lane
+
+    def tryAddVehicle(self, vehicle, currentTime, position = 0):
+        for lane in self.lanes:
+            lane.tryAddVehicle(vehicle, currentTime, position)
+
+    def addVehicleToLane(self, vehicle, laneId, currentTime, position = 0):
+        lane = self.getLane(laneId)
+        self.addVehicleToLane(vehicle, lane, currentTime, position)
+
+    def addVehicleToLane(self, vehicle, lane, currentTime, position = 0):
+        if lane != None:
+            lane.addVehicle(vehicle, currentTime, position)
+
+    def tryAddVehicleToLane(self, vehicle, laneId, currentTime, position = 0):
+        lane = self.getLane(laneId)
+        self.tryAddVehicleToLane(vehicle, lane, currentTime, position)
+    
+    def tryAddVehicleToLane(self, vehicle, lane, currentTime, position = 0):
+        if lane != None:
+            lane.tryAddVehicle(vehicle, currentTime, position)
+
+#TODO: I must implement roadway/multilane with polimorphism, so I can keep calling the same methods in junctions
+#the multilane will handle its lanes and call the lane methods
 class Lane:
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
@@ -555,7 +601,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
 #TODO: implementa strade a doppia corsia: Lane gestisce una corsia come l'attuale Road, Road gestisce una strada a n Lane
 #TODO: Factory classes with functions to handle initialization of networks
 
-#TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Roadway > Road > Lane
+#TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Road > Roadway > Lane
 #class Roadway:
 #TODO: Network class to handle multiple lanes and junctions (maybe all map?), and Simulator class to handle the simulation, and update every Lane etc...
 #Simulation class will also handle the history of the entirye Network (or Map), and have a saveHistory function to save the entire history of the map in a json file
