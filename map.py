@@ -27,7 +27,9 @@ class Lane:
         self.startJunction = startJunction
         self.endJunction = endJunction
         self.priority = priority
-
+        #FIXME: priority should not be assigned to the lane, but to the lane reference in the junction, because the lane can be used in multiple junctions and have different priorities
+#FIXME: vehicles are added through addVehicle, then moveVehicles is called, so the vehicles instead of spawning at position 0 spawn at speed * timeStep position
+#one possible solution is to not call moveVehicles in the first cycle
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the lane and returns the position of the vehicle
         # I check if there is a vehicle too close
         self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the lane, so I reset it to 0 in case it's coming from another lane
@@ -38,10 +40,11 @@ class Lane:
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
             if precedingVehiclePosition < 0:
                 position = safetyPosition
-                print("Vehicle %d has negative position: %f" % (precedingVehicle.id, precedingVehiclePosition)) #non arriva mai qui?? capisci dov'è che decrementa la posizione
+                #print("Vehicle %d has negative position: %f" % (precedingVehicle.id, precedingVehiclePosition))
             if safetyPosition <= 0:
                 position = safetyPosition
-                print("Vehicle %d is too close to the previous vehicle, setting position to %f" % (vehicle.id, safetyPosition)) 
+                #print("Vehicle %d is too close to the previous vehicle, setting position to %f" % (vehicle.id, safetyPosition)) 
+                #print("Preceding vehicle %d: pos: %f, speed: %f" % (precedingVehicle.id, precedingVehiclePosition, precedingVehicle.getSpeed()))
                 vehicle.stopAtVehicle(0) #solve increasing negative position problem
             else:
                 if position > safetyPosition:
@@ -52,11 +55,12 @@ class Lane:
         elif firstSem != None and firstSem.isRed(currentTime) and position >= firstSem.position:
             vehicle.stopAtSemaphore(firstSem.position)
         else:
-            print("Adding vehicle %d to lane %d at position %f" % (vehicle.id, self.id, position)) #TODO: solve here bug causing vehicles to stop, debug the next cycle
-            print("Vehicle speed: %f" % vehicle.getSpeed())
+            #print("Adding vehicle %d to lane %d at position %f" % (vehicle.id, self.id, position)) #TODO: solve here bug causing vehicles to stop, debug the next cycle
             vehicle.setPosition(position)
             self.limitSpeed(vehicle)
         self.vehicles.append(vehicle)
+        #TODO: check if the injecting position is greater than the length of the lane, in that case call the endOfLaneHandler function
+        #print("Vehicle %d added to lane %d at position %d, speed: %d, at time %d" % (vehicle.id, self.id, vehicle.position, vehicle.speed, currentTime))
         return position
 
     def tryAddVehicle(self, vehicle, currentTime, position = 0): #only adds the vehicle if there is enough space, returns the position of the vehicle
@@ -94,7 +98,6 @@ class Lane:
         if vehicle.lastUpdate == currentTime:
             return False
         if vehicle in self.vehicles: #if the vehicle is on the lane
-            currentPos = vehicle.getPosition()
             nextPos = vehicle.calculatePosition(timeStep) #I get the future position of the vehicle based on current speed and acceleration
             precedingVeh = self.precedingVehicle(vehicle) #I get the previous vehicle
             nextSem = self.getNextSemaphore(vehicle.getPosition()) #I get the next semaphore
@@ -106,7 +109,7 @@ class Lane:
             if not vehicle.isGivingWay(): #if the vehicle is not giving way
                 if vehicle.isStopped():
                     if freeLane: #if the lane is free
-                        pos = vehicle.restart(timeStep)
+                        pos = vehicle.restart(self.speedLimit, timeStep)
                         if precedingVeh != None and pos > self.safetyPositionFrom(precedingVeh):
                             if self.safetyPositionFrom(precedingVeh) >= 0:
                                 vehicle.followVehicle(precedingVeh,self.vehicleDistance)
@@ -116,12 +119,12 @@ class Lane:
                         pass
                     elif precedingVeh != None and not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
                         if self.safetyPositionFrom(precedingVeh) >= 0:
-                            pos = vehicle.restart(timeStep)
+                            pos = vehicle.restart(self.speedLimit, timeStep)
                             if pos > self.safetyPositionFrom(precedingVeh):
                                 vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                 else: #if the vehicle is moving
                     if freeLane: #if the lane is free
-                        vehicle.move(timeStep)
+                        vehicle.move(self.speedLimit, timeStep)
                         if precedingVeh != None and vehicle.getPosition() > self.safetyPositionFrom(precedingVeh):
                             vehicle.followVehicle(precedingVeh,self.vehicleDistance)
                     elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
@@ -139,28 +142,32 @@ class Lane:
                     self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep)
 
             else: #if the vehicle is giving way
-                vehicle.restart(timeStep) #I try to restart the vehicle
+                oldPosition = vehicle.getPosition()
+                vehicle.restart(self.speedLimit, timeStep) #I try to restart the vehicle
                 ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the lane
                 self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfLaneHandler will decide if the vehicle can go or has to keep waiting
+                if vehicle in self.vehicles and vehicle.isGivingWay():
+                    vehicle.setPosition(oldPosition) #if the vehicle has to keep waiting, I reset its position to the previous one
 
-            vehicle.lastUpdate = currentTime
+            vehicle.update(currentTime)
             return True
         return False
     
     def endOfLaneHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
             if self.endJunction != None: #if there is a junction at the end of the lane
-                print("Vehicle %d reached the end of lane %d" % (vehicle.id, self.id))
+                #print("Vehicle %d reached the end of lane %d" % (vehicle.id, self.id))
                 self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
             else:
                 self.removeVehicle(vehicle)
-                print("Vehicle %d reached the end of lane %d and was removed" % (vehicle.id, self.id))
+                vehicle.setArrivalTime(currentTime)
+                #print("Vehicle %d reached the end of lane %d and was removed at time %d" % (vehicle.id, self.id, currentTime))
 
     def hasOutgoingVehicles(self, timeStep = 1):
         for vehicle in self.vehicles:
             if vehicle.calculatePosition(timeStep) > self.length:
                 return True
-
+    
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.vehicles[:] #I iterate over a copy of the list
         for vehicle in tmp:
@@ -185,6 +192,8 @@ class Lane:
             vehicle.setSpeed(self.speedLimit)
 
     def precedingVehicle(self, vehicle): #I get the preceding vehicle of the current vehicle, Vehicles must be ordered by position
+        if len(self.vehicles) <= 1:
+            return None
         for i in range(len(self.vehicles)):
             if self.vehicles[i] == vehicle:
                 if i > 0:
@@ -244,7 +253,7 @@ class Lane:
         return None
         
     def isGreen(self, currentTime):
-        LastSemaphore = self.getLastSemaphore()
+        LastSemaphore = self.getEndSemaphore()
         if LastSemaphore != None:
             return LastSemaphore.isGreen(currentTime)
         return True
@@ -434,6 +443,7 @@ class Merge(Junction): #2 incoming lanes, 1 outgoing lane
                 fromLane.giveWay(vehicle)
 
 class Intersection(Junction): #n incoming lanes, n outgoing lanes
+    #TODO: handle a list of fluxes for each incoming lane
     def __init__(self, id, incomingLanes = [], outgoingLanes = [], outgoingFluxes = []):
         self.id = id
         self.incomingLanes = incomingLanes
@@ -488,14 +498,31 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
         nextLane = self.outgoingLanes[chosenLane]
         return nextLane
     
-    def canGo(self, lane):
+    def canGo(self, lane, currentTime):
         #I take every lane with higher priority (lowest number) that has Green and has outgoing vehicles, if there is no such lane I return True
         if self.incomingLanes == None:
             return False
         for r in self.incomingLanes:
-            if r.getPriority() < lane.getPriority() and r.isGreen() and r.hasOutgoingVehicles():
+            if r.getPriority() < lane.getPriority() and r.isGreen(currentTime) and r.hasOutgoingVehicles():
                 return False
         return True
+    
+    def outgoingLanesOrderedByPriority(self):
+        '''#this function is O(n^2), consider using a priority queue
+        lanes = self.outgoingLanes
+        orderedLanes = []
+        #i append first the lane with the highest priority, then the lane with the second highest priority, and so on
+        for i in range(len(self.outgoingLanes)):
+            maxPriority = lanes[0].getPriority()
+            maxPriorityLane = lanes[0]
+            for lane in lanes:
+                if lane.getPriority() < maxPriority:
+                    maxPriority = lane.getPriority()
+                    maxPriorityLane = lane
+            orderedLanes.append(maxPriorityLane)
+            lanes.remove(maxPriorityLane)
+        return orderedLanes'''
+        return sorted(self.outgoingLanes, key=lambda x: x.priority, reverse=False)
     
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if self.incomingLanes == None:
@@ -504,20 +531,20 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
         incomingLane = self.incomingLane(vehicle)
         if incomingLane != None:
             if self.outgoingLanes == None or self.outgoingLanesFluxes == None:
-                if incomingLane != None:
-                    incomingLane.removeVehicle(vehicle)
+                incomingLane.removeVehicle(vehicle)
+                vehicle.setArrivalTime(currentTime)
                 print("Error: intersection has no outgoing lanes")
                 return
             #fluxes represent the probability of going to each lane, given randomValue I choose the next lane
             nextLane = self.getNextLane()
             #priorityLane = self.getPriorityLane()
 
-            canGo = self.canGo(incomingLane)
+            canGo = self.canGo(incomingLane,currentTime)
             if canGo: #if the vehicle can go (i.e there is no vehicle with higher priority that has green light and outgoing vehicles)
                 pos = nextLane.tryAddVehicle(vehicle, currentTime, position) #retuns the new position, <0 if the vehicle cannot be added
                 if pos < 0: #if the vehicle cannot be added to the next lane
                     pos += incomingLane.length #I calculate the position where to wait in the incoming lane
-                    self.incomingLane.waitForNextLane(vehicle, pos) #I make the vehicle wait in the incoming lane
+                    incomingLane.waitForNextLane(vehicle, pos) #I make the vehicle wait in the incoming lane
                 else:
                     incomingLane.removeVehicle(vehicle)
             else:

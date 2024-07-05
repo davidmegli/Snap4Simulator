@@ -20,20 +20,80 @@ class Vehicle:
     STATE_WAITING_TO_ENTER = "entering"
     STATE_FOLLOWING_VEHICLE = "following"
     STATE_GIVING_WAY = "giving_way" #"precedenza"
-    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.3):
+    STATE_CREATED = "created"
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0):
         self.id = id
         self.length = length #meters
-        self.initialSpeed = initialSpeed
+        self.initialPosition = initialPosition
+        self.initialSpeed = initialSpeed if initialSpeed > 0 else 0
+        self.initialSpeed = min(self.initialSpeed, maxSpeed)
         self.initialAcceleration = initialAcceleration
         self.maxSpeed = maxSpeed #m/s
         self.maxAcceleration = maxAcceleration #m/s^2
         self.creationTime = creationTime
+        self.lastUpdate = creationTime
         self.sigma = sigma
         self.setPosition(initialPosition)
         self.setSpeed(initialSpeed) #m/s
         self.setAcceleration(initialAcceleration) #m/s^2
-        self.lastUpdate = creationTime
+        self.pastState = self.STATE_CREATED
+        self.arrivalTime = -1
+        self.numberOfStops = 0
+        self.timeWaited = 0
+        #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
+        #TODO: increment time waited and number of stops each time the vehicle stops, i.e. each time the speed was >0 and is set to 0
+        #be careful, sometimes in moveVehicle the vehicle is moved just to check if the next position would collide, in those case it shouldn't count as stop, since
+        #the vehicle was already stopped. Maybe use the lastUpdate attribute to check if the vehicle was already stopped in the previous cycle?
+        #or just count the time stopped
 
+    #crea funzione che restituisce true se stato è uno di quelli che aspetta
+
+    @staticmethod
+    def getVehiclesMetrics(vehicles): #returns the min, max and average travel time, the min, max and average number of stops, the min, max and average time waited
+        travelTimes = [v.getTravelTime() for v in vehicles if v.isArrived()]
+        stops = [v.getNumberOfStops() for v in vehicles]
+        timeWaited = [v.timeWaited for v in vehicles]
+        return (min(travelTimes), max(travelTimes), sum(travelTimes)/len(travelTimes), min(stops), max(stops), sum(stops)/len(stops), min(timeWaited), max(timeWaited), sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0 )
+
+    def getVehiclesMetricsAsString(vehicles):
+        metrics = Vehicle.getVehiclesMetrics(vehicles)
+        return "Travel Times: min: %d, max: %d, avg: %d, Stops: min: %d, max: %d, avg: %d, Time Waited: min: %d, max: %d, avg: %d" % metrics
+
+    def movingState(self, state):
+        return state == self.STATE_MOVING or state == self.STATE_FOLLOWING_VEHICLE
+    
+    def waitingState(self, state):
+        return state == self.STATE_WAITING_SEMAPHORE or state == self.STATE_WAITING_VEHICLE or state == self.STATE_WAITING_TO_ENTER or state == self.STATE_GIVING_WAY or state == self.STATE_STOPPED
+
+    def update(self,currentTime):
+        if self.waitingState(self.pastState): #or self.pastState == self.STATE_CREATED: #if the vehicle was waiting, increment the time waited
+            self.timeWaited += currentTime - self.lastUpdate
+        if self.isStopped() and (self.movingState(self.pastState) or self.lastUpdate == self.creationTime): #if the vehicle was moving and now is stopped, increment the number of stops
+            self.numberOfStops += 1
+        self.pastState = self.state #update the past state
+        self.lastUpdate = currentTime #update the last update time
+
+    def isArrived(self):
+        return self.arrivalTime >= 0
+    
+    def setArrivalTime(self, time):
+        self.arrivalTime = time
+    
+    def getArrivalTime(self):
+        return self.arrivalTime
+    
+    def getDepartureTime(self):
+        return self.creationTime
+    
+    def getNumberOfStops(self):
+        return self.numberOfStops
+    
+    def incrementNumberOfStops(self):
+        self.numberOfStops += 1
+
+    def getTravelTime(self):
+        return self.arrivalTime - self.creationTime
+    
     def getPosition(self):
         return self.position
     
@@ -65,9 +125,9 @@ class Vehicle:
     def setState(self, state):
         self.state = state
     
-    def move(self, timeStep = 1):
+    def move(self, speedLimit, timeStep = 1):
         self.setPosition(self.calculatePosition(timeStep))
-        self.setSpeed(self.calculateSpeed(timeStep))
+        self.setSpeed(min(random.gauss(self.calculateSpeed(timeStep),self.sigma),speedLimit))
         self.setAcceleration(self.calculateAcceleration(timeStep))
 
     def calculatePosition(self, timeStep = 1):
@@ -107,14 +167,28 @@ class Vehicle:
         self.setPosition(position)
         self.setState(self.STATE_MOVING)
 
-    def restart(self, timeStep = 1):
-        self.setSpeed(self.initialSpeed)
+    def restart(self, speedLimit, timeStep = 1):
+        self.setSpeed(min(self.initialSpeed,speedLimit))
         self.setAcceleration(0)
         self.setPosition(self.calculatePosition(timeStep))
         return self.getPosition()
 
     def getState(self):
         return (self.position, self.speed, self.acceleration)
+    
+    def getMetrics(self):
+        return (self.creationTime, self.initialPosition, self.initialSpeed, self.arrivalTime, self.getSpeed(), self.getTravelTime(), self.getNumberOfStops(), self.timeWaited)
+    
+    def getMetricsAsString(self):
+        if self.isArrived():
+            return "Departure: %d, InitialPos: %d, InitialSpeed: %d, Arrival: %d, Final Speed: %d, Travel Time: %d, Stops: %d, Time Waited: %d" % self.getMetrics()
+        else:
+            metrics = self.getMetrics()
+            return "Departure: %d, InitialPos: %d, InitialSpeed: %d, Stops: %d, Time Waited: %d, not arrived" % (metrics[0], metrics[1], metrics[2], metrics[6], metrics[7])
+        
+    def getMetricsAsJSON(self):
+        metrics = self.getMetrics()
+        return {"Departure": metrics[0], "InitialPos": metrics[1], "InitialSpeed": metrics[2], "Arrival": metrics[3], "FinalSpeed": metrics[4], "TravelTime": metrics[5], "Stops": metrics[6], "TimeWaited": metrics[7]}
     
     def isStopped(self):
         return self.speed == 0
@@ -138,7 +212,7 @@ class Vehicle:
         return self.state == self.STATE_WAITING_TO_ENTER
     
     def followVehicle(self, vehicle, distance):
-        self.setPosition(vehicle.position - vehicle.length - distance)
+        self.setPosition(vehicle.getPosition() - vehicle.length - distance)
         self.setSpeed(vehicle.speed)
         self.setAcceleration(0)
         if self.getSpeed() > 0:

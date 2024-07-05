@@ -13,3 +13,4 @@ bifurcation_simulation_output.txt
 merge_simulation_output.txt
 single_lane_simulation_output.txt
 single_lane_lane1.json
+bifurcation_intersection_simulation_output.txt

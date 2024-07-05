@@ -20,13 +20,13 @@ def simulate():
     startingPosition = 0
     timeStep = 2 #seconds
     sectorsPerLane = 10
-    laneLength = 1000 #meters
+    laneLength = 500 #meters
     simulationCycles = 250
     greenLight = 60 #seconds
     redLight = 30 #seconds
     semaphorePosition = laneLength/2
     spawningRate = 60
-    semaphore = Semaphore(greenLight, redLight, semaphorePosition, 0, 0) 
+    semaphore = Semaphore(greenLight, redLight, semaphorePosition, 0, 0)
     lane1 = Lane(0, laneLength, 1, 50/3.6,) #id, length, vehicleDistance, speedLimit
     lane2 = Lane(1, laneLength, 1, 50/3.6)
     lane3 = Lane(2, laneLength, 1, 50/3.6)
