@@ -40,6 +40,7 @@ class Vehicle:
         self.arrivalTime = -1
         self.numberOfStops = 0
         self.timeWaited = 0
+        self.lane = 0
         #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
         #TODO: increment time waited and number of stops each time the vehicle stops, i.e. each time the speed was >0 and is set to 0
         #be careful, sometimes in moveVehicle the vehicle is moved just to check if the next position would collide, in those case it shouldn't count as stop, since
@@ -219,6 +220,12 @@ class Vehicle:
             self.setState(self.STATE_FOLLOWING_VEHICLE)
         else:
             self.setState(self.STATE_WAITING_VEHICLE)
+
+    def setLane(self, lane):
+        self.lane = lane
+
+    def getLane(self):
+        return self.lane
 
 class Car(Vehicle):
     def __init__(self, id, initialSpeed, initialPosition):
