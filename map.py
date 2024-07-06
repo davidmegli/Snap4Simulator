@@ -97,11 +97,8 @@ class Lane:
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
             if precedingVehiclePosition < 0:
                 position = safetyPosition
-                #print("Vehicle %d has negative position: %f" % (precedingVehicle.id, precedingVehiclePosition))
             if safetyPosition <= 0:
                 position = safetyPosition
-                #print("Vehicle %d is too close to the previous vehicle, setting position to %f" % (vehicle.id, safetyPosition)) 
-                #print("Preceding vehicle %d: pos: %f, speed: %f" % (precedingVehicle.id, precedingVehiclePosition, precedingVehicle.getSpeed()))
                 vehicle.stopAtVehicle(0) #solve increasing negative position problem
             else:
                 if position > safetyPosition:
@@ -112,12 +109,9 @@ class Lane:
         elif firstSem != None and firstSem.isRed(currentTime) and position >= firstSem.position:
             vehicle.stopAtSemaphore(firstSem.position)
         else:
-            #print("Adding vehicle %d to lane %d at position %f" % (vehicle.id, self.id, position)) #TODO: solve here bug causing vehicles to stop, debug the next cycle
             vehicle.setPosition(position)
             self.limitSpeed(vehicle)
         self.appendVehicle(vehicle)
-        #TODO: check if the injecting position is greater than the length of the lane, in that case call the endOfLaneHandler function
-        #print("Vehicle %d added to lane %d at position %d, speed: %d, at time %d" % (vehicle.id, self.id, vehicle.position, vehicle.speed, currentTime))
         return position
 
     def tryAddVehicle(self, vehicle, currentTime, position = 0): #only adds the vehicle if there is enough space, returns the position of the vehicle
@@ -215,12 +209,10 @@ class Lane:
     def endOfLaneHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
             if self.endJunction != None: #if there is a junction at the end of the lane
-                #print("Vehicle %d reached the end of lane %d" % (vehicle.id, self.id))
                 self.endJunction.handleVehicle(vehicle, ExceedingDistance,currentTime, timeStep)
             else:
                 self.removeVehicle(vehicle)
                 vehicle.setArrivalTime(currentTime)
-                #print("Vehicle %d reached the end of lane %d and was removed at time %d" % (vehicle.id, self.id, currentTime))
 
     def hasOutgoingVehicles(self, timeStep = 1):
         vehicles = self.getVehicles()
