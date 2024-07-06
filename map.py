@@ -51,7 +51,7 @@ class Road:
 class Line: #TODO: use this class to handle the lines of a multilane
     #Step 1: replace vehicles list with a list of Line objects without changing the Lane methods
     #Step 2: add multiple lines feature to Lane
-    def __init__(self, vehicles):
+    def __init__(self, vehicles = None):
         self.vehicles = vehicles if vehicles else []
 
     def append(self, vehicle):
@@ -77,7 +77,7 @@ class Lane:
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
-        self.vehicles = [] #TODO: add lane reference to vehicle, lane corresponds to the lane the vehicle is in, vehicles in lane x are in list x (list of lists?)
+        self.line = [Line()] #TODO: add lane reference to vehicle, lane corresponds to the lane the vehicle is in, vehicles in lane x are in list x (list of lists?)
         self.vehicleDistance = vehicleDistance #distance between vehicles in meters
         self.speedLimit = speedLimit #speed limit in m/s
         self.semaphores = semaphores if semaphores else []  # list of semaphores on the lane
@@ -346,10 +346,13 @@ class Lane:
         return False
     
     def getVehicles(self):
-        return self.vehicles
+        index = 0
+        return self.line[index].getVehicles()
     
     def appendVehicle(self, vehicle):
-        self.vehicles.append(vehicle)
+        index = 0
+        #self.vehicles.append(vehicle)
+        self.line[index].append(vehicle)
 
 '''class RoadWay(Lane):
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
