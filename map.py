@@ -48,6 +48,27 @@ class Road:
         return True
 
 
+class Line: #TODO: use this class to handle the lines of a multilane
+    #Step 1: replace vehicles list with a list of Line objects without changing the Lane methods
+    #Step 2: add multiple lines feature to Lane
+    def __init__(self, vehicles):
+        self.vehicles = vehicles if vehicles else []
+
+    def append(self, vehicle):
+        self.vehicles.append(vehicle)
+                             
+    def remove(self, vehicle):
+        self.vehicles.remove(vehicle)
+
+    def getVehicles(self):
+        return self.vehicles
+    
+    def getVehicle(self, index):
+        return self.vehicles[index]
+    
+    def getVehicleCount(self):
+        return len(self.vehicles)
+
 
 #TODO: I must implement roadway/multilane with polimorphism, so I can keep calling the same methods in junctions
 #the multilane will handle its lanes and call the lane methods. I must handle multilane going into junctions and merging into a single lane
@@ -56,7 +77,7 @@ class Lane:
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
-        self.vehicles = [] #list of vehicles on the lane
+        self.vehicles = [] #TODO: add lane reference to vehicle, lane corresponds to the lane the vehicle is in, vehicles in lane x are in list x (list of lists?)
         self.vehicleDistance = vehicleDistance #distance between vehicles in meters
         self.speedLimit = speedLimit #speed limit in m/s
         self.semaphores = semaphores if semaphores else []  # list of semaphores on the lane
