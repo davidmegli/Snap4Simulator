@@ -4,7 +4,7 @@
 
 Desctiption:
 This file the classes to handle vehicles in the simulation.
-Class Vehicle handles the state of the vehicle (position on the lane, speed, acceleration) and its movement.
+Class Vehicle handles the state of the vehicle (position on the road, speed, acceleration) and its movement.
 The class has methods to calculate the position, speed and acceleration of the vehicle in the next time step (default time step is 1 second).
 The class has methods to stop the vehicle, move it to a given position, restart it, follow another vehicle at a given distance, stop at a given position,
 stop at a semaphore, stop at a vehicle, give way to another vehicle, and restart the vehicle.

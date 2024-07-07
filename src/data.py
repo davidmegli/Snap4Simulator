@@ -3,44 +3,44 @@
 @author  David Megli
 
 Description:
-This file contains the classes to handle the history of the map, saving the state of the lanes at different times.
-The classes calculate the number of vehicles and density for each sector of a Lane, and can save the history of the lane in a json file.
+This file contains the classes to handle the history of the map, saving the state of the roads at different times.
+The classes calculate the number of vehicles and density for each sector of a Road, and can save the history of the road in a json file.
 """
-from map import Lane
+from map import Road
 import json
 
 #TODO: MapState and MapHistory to keep track of the entire map, with saveHistory function to save the entire history of the map in a json file
 
-class LaneState:
+class RoadState:
     def __init__(self, time, vehiclesPerSector, densityPerSector, numSectors):
         self.time = time
         self.vehiclesPerSector = vehiclesPerSector
         self.densityPerSector = densityPerSector
         self.numSectors = numSectors
 
-class LaneHistory:
-    def __init__(self, lane, sectorLength = 100): #sectorLength in meters
-        self.lane = lane
+class RoadHistory:
+    def __init__(self, road, sectorLength = 100): #sectorLength in meters
+        self.road = road
         self.sectorLength = sectorLength
-        self.states = [] #list of SectorsState objects that represent the state of the lane in a given time
+        self.states = [] #list of SectorsState objects that represent the state of the road in a given time
 
-    def saveState(self, lane, time): #Given the time, I save the state of the lane, saving the number of vehicles in each sector
+    def saveState(self, road, time): #Given the time, I save the state of the road, saving the number of vehicles in each sector
         vehiclesPerSector = []
         densityPerSector = []
-        for i in range(0, int(lane.length), int(self.sectorLength)):
-            maxpos = i + self.sectorLength if i + self.sectorLength <= lane.length else int(lane.length)
-            if int(lane.length) - i < self.sectorLength*3/2: #in case the last sector is too short
-                maxpos = int(lane.length)
-            vehicles = self.lane.vehiclesAt(i, maxpos)
+        for i in range(0, int(road.length), int(self.sectorLength)):
+            maxpos = i + self.sectorLength if i + self.sectorLength <= road.length else int(road.length)
+            if int(road.length) - i < self.sectorLength*3/2: #in case the last sector is too short
+                maxpos = int(road.length)
+            vehicles = self.road.vehiclesAt(i, maxpos)
             occupiedSpace = 0
             for v in vehicles:
                 occupiedSpace += v.length
-                occupiedSpace += self.lane.vehicleDistance
-            vehiclesPerSector.append(len(lane.vehiclesAt(i, maxpos)))
+                occupiedSpace += self.road.vehicleDistance
+            vehiclesPerSector.append(len(road.vehiclesAt(i, maxpos)))
             densityPerSector.append(occupiedSpace / self.sectorLength if self.sectorLength > 0 else 0)
-            if int(lane.length) - i < self.sectorLength*3/2:
+            if int(road.length) - i < self.sectorLength*3/2:
                 break
-        self.states.append(LaneState(time, vehiclesPerSector, densityPerSector, len(vehiclesPerSector)))
+        self.states.append(RoadState(time, vehiclesPerSector, densityPerSector, len(vehiclesPerSector)))
 
     def getHistory(self):
         return self.states
@@ -53,7 +53,7 @@ class LaneHistory:
 
     def saveHistory(self, filename):
         history_dict = {
-            "lane": self.lane.id,
+            "road": self.road.id,
             "states": []
             }
         for state in self.states:
