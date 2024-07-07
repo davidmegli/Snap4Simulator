@@ -16,7 +16,7 @@ Junctions have a handleVehicle method that is called when a vehicle reaches the 
 """
 import random
 
-class Line:
+class Lane:
     def __init__(self, vehicles = None):
         self.vehicles = vehicles if vehicles else []
 
@@ -38,12 +38,12 @@ class Line:
 
 #TODO: I must implement roadway/multilane with polimorphism, so I can keep calling the same methods in junctions
 #the multilane will handle its lanes and call the lane methods. I must handle multilane going into junctions and merging into a single lane
-#the junction must handle all the lines of a multilane as different lanes
+#the junction must handle all the lanes of a multilane as different lanes
 class Road:
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
-        self.line = [Line()]
+        self.lanes = [Lane()]
         self.vehicleDistance = vehicleDistance #distance between vehicles in meters
         self.speedLimit = speedLimit #speed limit in m/s
         self.semaphores = semaphores if semaphores else []  # list of semaphores on the road
@@ -56,7 +56,7 @@ class Road:
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the road and returns the position of the vehicle
         # I check if there is a vehicle too close
         self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the road, so I reset it to 0 in case it's coming from another road
-        for i in range(len(self.line)):
+        for i in range(len(self.lanes)):
             pos = self.addVehicleToLane(vehicle, currentTime, position, i)
             if pos >= 0:
                 return pos
@@ -198,7 +198,7 @@ class Road:
         self.limitSpeed(vehicle)
 
     def isLaneFreeAtPosition(self, position, laneIndex):
-        if len(self.line) <= 0 or laneIndex >= len(self.line):
+        if len(self.lanes) <= 0 or laneIndex >= len(self.lanes):
             return False
         vehicles = self.getVehiclesInLane(laneIndex)
         if vehicles is None:
@@ -276,9 +276,9 @@ class Road:
         return vehicle.position + self.vehicleDistance + vehicle.length
 
     def removeVehicle(self, vehicle):
-        for i in range(len(self.line)):
+        for i in range(len(self.lanes)):
             if self.hasVehicleInLane(vehicle, i):
-                self.line[i].remove(vehicle)
+                self.lanes[i].remove(vehicle)
                 return True
         return False
 
@@ -351,18 +351,18 @@ class Road:
         return False
     
     def getVehiclesInLane(self, laneIndex):
-        return self.line[laneIndex].getVehicles() if laneIndex < len(self.line) else None
+        return self.lanes[laneIndex].getVehicles() if laneIndex < len(self.lanes) else None
     
     def getAllVehicles(self):
         allVehicles = []
-        for index in range(len(self.line)):
-            allVehicles += self.line[index].getVehicles()
+        for index in range(len(self.lanes)):
+            allVehicles += self.lanes[index].getVehicles()
         return allVehicles
     
     def appendVehicle(self, vehicle):
         index = 0
         #self.vehicles.append(vehicle)
-        self.line[index].append(vehicle)
+        self.lanes[index].append(vehicle)
 
     def getLaneWhereVehicleIs(self, vehicle):
         return vehicle.getLane()
