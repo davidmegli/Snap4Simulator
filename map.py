@@ -313,9 +313,11 @@ class Lane:
         return vehicle.position + self.vehicleDistance + vehicle.length
 
     def removeVehicle(self, vehicle):
-        vehicles = self.getAllVehicles()
-        if vehicle in vehicles:
-           vehicles.remove(vehicle)
+        for i in range(len(self.line)):
+            if self.hasVehicleInLane(vehicle, i):
+                self.line[i].remove(vehicle)
+                return True
+        return False
 
     def vehicleDensity(self):
         vehicles = self.getAllVehicles()
@@ -352,9 +354,9 @@ class Lane:
         return None
         
     def isGreen(self, currentTime):
-        LastSemaphore = self.getEndSemaphore()
-        if LastSemaphore != None:
-            return LastSemaphore.isGreen(currentTime)
+        endSemaphore = self.getEndSemaphore()
+        if endSemaphore is not None:
+            return endSemaphore.isGreen(currentTime)
         return True
         
     def removeSemaphore(self, semaphore):
