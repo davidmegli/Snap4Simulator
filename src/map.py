@@ -334,6 +334,9 @@ class Road:
         
     def getPriority(self):
         return self.priority
+    
+    def getNumberOfLanes(self):
+        return len(self.lanes)
         
     def resetVehiclePosition(self, vehicle):
         vehicle.setPosition(0)

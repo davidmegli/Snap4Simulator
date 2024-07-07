@@ -64,7 +64,7 @@ def simulate():
     print()
     print(Vehicle.getVehiclesMetricsAsString(cars), file=f)
     #roadHistory.printHistory()
-    road1History.saveHistory("single_road_road1.json")
+    road1History.saveHistory("../output/single_road_road1.json")
 
 if __name__ == "__main__":
     simulate()
