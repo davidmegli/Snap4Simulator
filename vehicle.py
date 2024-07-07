@@ -126,10 +126,13 @@ class Vehicle:
     def setState(self, state):
         self.state = state
     
-    def move(self, speedLimit, timeStep = 1):
+    def move(self, speedLimit, timeStep = 1, lane = -1):
         self.setPosition(self.calculatePosition(timeStep))
         self.setSpeed(min(random.gauss(self.calculateSpeed(timeStep),self.sigma),speedLimit))
         self.setAcceleration(self.calculateAcceleration(timeStep))
+        if lane >= 0:
+            self.setLane(lane)
+        return self.getPosition()
 
     def calculatePosition(self, timeStep = 1):
         return self.position + self.speed * timeStep + 0.5 * self.acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2

@@ -49,8 +49,9 @@ class Road:
 
 
 class Line: #TODO: use this class to handle the lines of a multilane
-    #Step 1: replace vehicles list with a list of Line objects without changing the Lane methods
-    #Step 2: add multiple lines feature to Lane
+    #Step 1: replace vehicles list with a list of Line objects without changing the Lane methods (DONE)
+    #Step 2: add multiple lines feature to Lane (altready added Lane attribute to Vehicle, use it to get and set the line of the vehicle, then use
+    #the line as Line list index in Lane)
     def __init__(self, vehicles = None):
         self.vehicles = vehicles if vehicles else []
 
@@ -90,9 +91,16 @@ class Lane:
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the lane and returns the position of the vehicle
         # I check if there is a vehicle too close
         self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the lane, so I reset it to 0 in case it's coming from another lane
-        precedingVehicle = self.precedingVehicle(vehicle) #TODO: cycle through lanes, trying to add the vehicle to each lane in order
+        for i in range(len(self.line)):
+            pos = self.addVehicleToLane(vehicle, currentTime, position, i)
+            if pos >= 0:
+                return pos
+        return pos
+    
+    def addVehicleToLane(self, vehicle, currentTime, position, laneIndex):
+        precedingVehicle = self.precedingVehicle(vehicle, laneIndex)
         firstSem = self.getFirstSemaphore()
-        if precedingVehicle != None:
+        if precedingVehicle is not None:
             precedingVehiclePosition = precedingVehicle.getPosition()
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
             if precedingVehiclePosition < 0:
@@ -148,63 +156,60 @@ class Lane:
         # I move the vehicle to the next sector and call the move method of the vehicle, otherwise I call the stopAt method of the vehicle to stop it
         if vehicle.lastUpdate == currentTime:
             return False
-        vehicles = self.getVehicles()
-        if vehicle in vehicles: #if the vehicle is on the lane
-            nextPos = vehicle.calculatePosition(timeStep) #I get the future position of the vehicle based on current speed and acceleration
-            precedingVeh = self.precedingVehicle(vehicle) #I get the previous vehicle
-            nextSem = self.getNextSemaphore(vehicle.getPosition()) #I get the next semaphore
-            nextSemPos = self.getSemaphorePosition(nextSem) if nextSem != None else -2 #I get the position of the semaphore
-            redSemInFront = nextSem != None and nextSem.isRed(currentTime) and nextPos >= nextSemPos
-            vehicleInFront = precedingVeh != None and nextPos > self.safetyPositionFrom(precedingVeh)
-            freeLane = not redSemInFront and not vehicleInFront
+        if not self.hasVehicle(vehicle): #no vehicle no party
+            return False
+        laneIndex = self.getLaneWhereVehicleIs(vehicle)
+        vehicles = self.getVehiclesInLane(laneIndex)
+        nextPos = vehicle.calculatePosition(timeStep) #I get the future position of the vehicle based on current speed and acceleration
+        precedingVehicle = self.precedingVehicle(vehicle) #I get the previous vehicle
+        hasPrecedingVehicle = precedingVehicle is not None
+        nextSemaphore = self.getNextSemaphore(vehicle.getPosition()) #I get the next semaphore
+        nextSemPos = self.getSemaphorePosition(nextSemaphore) if nextSemaphore != None else -2 #I get the position of the semaphore
+        redSemInFront = nextSemaphore is not None and nextSemaphore.isRed(currentTime) and nextPos >= nextSemPos
+        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle)
+        vehicleInFront = precedingVehicle is not None and nextPos > safetyPositionFromPrecedingVehicle
+        noCloseVehiclesOrSemaphores = not redSemInFront and not vehicleInFront
+        if not vehicle.isGivingWay(): #if the vehicle is not giving way
+            if vehicle.isStopped():
+                if noCloseVehiclesOrSemaphores: #if the lane is free
+                    if safetyPositionFromPrecedingVehicle < 0:
+                        vehicle.stopAtVehicle(0)
+                    elif precedingVehicle is not None:
+                        self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=False)
+                elif redSemInFront: #if the next semaphore is red
+                    pass #wait
+                elif precedingVehicle is not None and not precedingVehicle.isStopped(): #if there is a vehicle in front and it's moving
+                    if safetyPositionFromPrecedingVehicle >= 0:
+                        self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=False)
+            else: #if the vehicle is moving
+                if noCloseVehiclesOrSemaphores: #if the lane is free
+                    if precedingVehicle is not None:
+                        self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
+                elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
+                    if nextSemPos < safetyPositionFromPrecedingVehicle: #if the red semaphore is closer
+                        vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
+                    else: #if the vehicle in front is closer. Note: I don't make the vehicle surpasse the other one, since there's a close red semaphore
+                        vehicle.followVehicle(precedingVehicle,self.vehicleDistance) #follow the vehicle in front
+                elif redSemInFront: #if the next semaphore is red but there is no vehicle in front
+                    vehicle.stopAtSemaphore(nextSemPos)
+                elif vehicleInFront: #if there is a vehicle in front but the semaphore is green
+                    self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
+    
+            ExceedingDistance = vehicle.getPosition() - self.length
+            if ExceedingDistance > 0: #if the vehicle reach the end of the lane
+                self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep)
 
-            if not vehicle.isGivingWay(): #if the vehicle is not giving way
-                if vehicle.isStopped():
-                    if freeLane: #if the lane is free
-                        pos = vehicle.restart(self.speedLimit, timeStep)
-                        if precedingVeh != None and pos > self.safetyPositionFrom(precedingVeh):
-                            if self.safetyPositionFrom(precedingVeh) >= 0:
-                                vehicle.followVehicle(precedingVeh,self.vehicleDistance)
-                            else:
-                                vehicle.stopAtVehicle(0)
-                    elif redSemInFront: #if the next semaphore is red
-                        pass
-                    elif precedingVeh != None and not precedingVeh.isStopped(): #if there is a vehicle in front and it's moving
-                        if self.safetyPositionFrom(precedingVeh) >= 0:
-                            pos = vehicle.restart(self.speedLimit, timeStep)
-                            if pos > self.safetyPositionFrom(precedingVeh):
-                                vehicle.followVehicle(precedingVeh,self.vehicleDistance)
-                else: #if the vehicle is moving
-                    if freeLane: #if the lane is free
-                        vehicle.move(self.speedLimit, timeStep)
-                        if precedingVeh != None and vehicle.getPosition() > self.safetyPositionFrom(precedingVeh):
-                            vehicle.followVehicle(precedingVeh,self.vehicleDistance)
-                    elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
-                        if nextSemPos < self.safetyPositionFrom(precedingVeh): #if the red semaphore is closer
-                            vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
-                        else: #if the vehicle in front is closer
-                            vehicle.followVehicle(precedingVeh,self.vehicleDistance) #follow the vehicle in front
-                    elif redSemInFront: #if the next semaphore is red but there is no vehicle in front
-                        vehicle.stopAtSemaphore(nextSemPos)
-                    elif vehicleInFront: #if there is a vehicle in front
-                        vehicle.followVehicle(precedingVeh,self.vehicleDistance)
-        
-                ExceedingDistance = vehicle.getPosition() - self.length
-                if ExceedingDistance > 0: #if the vehicle reach the end of the lane
-                    self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep)
+        else: #if the vehicle is giving way
+            oldPosition = vehicle.getPosition()
+            vehicle.restart(self.speedLimit, timeStep) #I try to restart the vehicle
+            ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the lane
+            self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfLaneHandler will decide if the vehicle can go or has to keep waiting
+            vehicles = self.getAllVehicles()
+            if vehicle in vehicles and vehicle.isGivingWay():
+                vehicle.setPosition(oldPosition) #if the vehicle has to keep waiting, I reset its position to the previous one
 
-            else: #if the vehicle is giving way
-                oldPosition = vehicle.getPosition()
-                vehicle.restart(self.speedLimit, timeStep) #I try to restart the vehicle
-                ExceedingDistance = vehicle.getPosition() - self.length #I know the vehicle is at the end of the lane
-                self.endOfLaneHandler(vehicle, ExceedingDistance, currentTime, timeStep) #endOfLaneHandler will decide if the vehicle can go or has to keep waiting
-                vehicles = self.getVehicles()
-                if vehicle in vehicles and vehicle.isGivingWay():
-                    vehicle.setPosition(oldPosition) #if the vehicle has to keep waiting, I reset its position to the previous one
-
-            vehicle.update(currentTime)
-            return True
-        return False
+        vehicle.update(currentTime)
+        return True
     
     def endOfLaneHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
         if ExceedingDistance > 0:
@@ -214,14 +219,52 @@ class Lane:
                 self.removeVehicle(vehicle)
                 vehicle.setArrivalTime(currentTime)
 
+    def moveAndOvertakeIfPossible(self, vehicle, precedingVehicle, laneIndex, currentTime, timeStep = 1, wasMoving = True):
+        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle)
+        if wasMoving:
+            newPosition = vehicle.move(self.speedLimit, timeStep)
+        else:
+            newPosition = vehicle.restart(self.speedLimit, timeStep)
+        if newPosition > safetyPositionFromPrecedingVehicle:
+            nextLaneIndex = laneIndex + 1
+            nextLaneIsFree = self.isLaneFreeAtPosition(newPosition, nextLaneIndex)
+            if nextLaneIsFree:
+                vehicle.setLane(nextLaneIndex)
+            else:
+                vehicle.followVehicle(precedingVehicle,self.vehicleDistance)
+        self.limitSpeed(vehicle)
+
+    def isLaneFreeAtPosition(self, position, laneIndex):
+        if len(self.line) <= 0 or laneIndex >= len(self.line):
+            return False
+        vehicles = self.getVehiclesInLane(laneIndex)
+        if vehicles is None:
+            return True
+        precedingVehicle = self.getNextVehicleAtPosition(position, laneIndex)
+        return precedingVehicle is None or self.safetyPositionFrom(precedingVehicle) > position
+
+
+    def getNextVehicleAtPosition(self, position, laneIndex):
+        vehicles = self.getVehiclesInLane(laneIndex)
+        #return the vehicle with minimum position greater than the given position
+        if vehicles == None:
+            return None
+        nextVehicle = vehicles[0]
+        minPosition = nextVehicle.getPosition()
+        for vehicle in vehicles:
+            if vehicle.getPosition() > position and vehicle.getPosition() < minPosition:
+                nextVehicle = vehicle
+                minPosition = vehicle.getPosition()
+        return nextVehicle
+
     def hasOutgoingVehicles(self, timeStep = 1):
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         for vehicle in vehicles:
             if vehicle.calculatePosition(timeStep) > self.length:
                 return True
     
     def moveVehicles(self, time, timeStep = 1):
-        tmp = self.getVehicles().copy()
+        tmp = self.getAllVehicles().copy()
         for vehicle in tmp:
             #print("Moving vehicle %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
@@ -243,8 +286,8 @@ class Lane:
         if vehicle.getSpeed() > self.speedLimit:
             vehicle.setSpeed(self.speedLimit)
 
-    def precedingVehicle(self, vehicle): #I get the preceding vehicle of the current vehicle, Vehicles must be ordered by position
-        vehicles = self.getVehicles()
+    def precedingVehicle(self, vehicle, laneIndex = 0): #I get the preceding vehicle of the current vehicle, Vehicles must be ordered by position
+        vehicles = self.getVehiclesInLane(laneIndex)
         if len(vehicles) <= 1:
             return None
         for i in range(len(vehicles)):
@@ -255,7 +298,7 @@ class Lane:
         return None
     
     def followingVehicle(self, vehicle): #I get the following vehicle of the current vehicle, Vehicles must be ordered by position
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         for i in range(len(vehicles)):
             if vehicles[i] == vehicle:
                 if i < len(vehicles) - 1:
@@ -270,17 +313,17 @@ class Lane:
         return vehicle.position + self.vehicleDistance + vehicle.length
 
     def removeVehicle(self, vehicle):
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         if vehicle in vehicles:
            vehicles.remove(vehicle)
 
     def vehicleDensity(self):
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         return len(vehicles) / self.length
     
     def vehiclesAt(self, start, end):
         vehiclesAt = []
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         for vehicle in vehicles:
             if vehicle.position > start and vehicle.position <= end:
                 vehiclesAt.append(vehicle)
@@ -330,21 +373,34 @@ class Lane:
     def resetVehiclePosition(self, vehicle):
         vehicle.setPosition(0)
 
+    def hasVehicleInLane(self, vehicle, laneIndex):
+        if (vehicles := self.getVehiclesInLane(laneIndex)) is None:
+            return False
+        return vehicle.getLane() == laneIndex and vehicle in vehicles
+    
     def hasVehicle(self, vehicle):
-        vehicles = self.getVehicles()
+        vehicles = self.getAllVehicles()
         for v in vehicles:
             if v == vehicle:
                 return True
         return False
     
-    def getVehicles(self):
-        index = 0
-        return self.line[index].getVehicles()
+    def getVehiclesInLane(self, laneIndex):
+        return self.line[laneIndex].getVehicles() if laneIndex < len(self.line) else None
+    
+    def getAllVehicles(self):
+        allVehicles = []
+        for index in range(len(self.line)):
+            allVehicles += self.line[index].getVehicles()
+        return allVehicles
     
     def appendVehicle(self, vehicle):
         index = 0
         #self.vehicles.append(vehicle)
         self.line[index].append(vehicle)
+
+    def getLaneWhereVehicleIs(self, vehicle):
+        return vehicle.getLane()
 
 '''class RoadWay(Lane):
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
