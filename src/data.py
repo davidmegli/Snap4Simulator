@@ -17,7 +17,23 @@ class RoadState:
         self.vehiclesPerSector = vehiclesPerSector
         self.densityPerSector = densityPerSector
         self.densityPerSectorPerLane = densityPerSectorPerLane
+        self.longestTrafficQueue = 0
         self.numSectors = numSectors
+        self.minDensityToConsiderTrafficQueue = 0.8
+        #TODO: extract the longest traffic queue as count of consecutive sectors with density > 0.8
+        self.calculateLongestTrafficQueue()
+
+    def calculateLongestTrafficQueue(self):
+        for i in range(self.numSectors):
+            if self.densityPerSector[i] > self.minDensityToConsiderTrafficQueue:
+                count = 1
+                for j in range(i+1, self.numSectors):
+                    if self.densityPerSector[j] > self.minDensityToConsiderTrafficQueue:
+                        count += 1
+                    else:
+                        break
+                if count > self.longestTrafficQueue:
+                    self.longestTrafficQueue = count
 
 class RoadHistory:
     def __init__(self, road: Road, sectorLength = 100): #sectorLength in meters
@@ -57,6 +73,11 @@ class RoadHistory:
                 print("Sector %d: %d vehicles" % (i, state.vehiclesPerSector[i]))
 
     def saveHistory(self, filename):
+        history_dict = self.getHistoryDict()
+        with open(filename, "w") as f:
+            json.dump(history_dict, f, indent = 4)
+
+    def getHistoryDict(self):
         history_dict = {
             "road": self.road.id,
             "states": []
@@ -66,13 +87,12 @@ class RoadHistory:
                 "time": state.time,
                 "DensityPerSector": [],
                 "DensityPerSectorPerLane": [],
+                "longestTrafficQueue": state.longestTrafficQueue,
                 "numSectors": state.numSectors
             }
             for i in range(state.numSectors):
                 state_dict["DensityPerSector"].append(state.densityPerSector[i]) 
                 state_dict["DensityPerSectorPerLane"].append(state.densityPerSectorPerLane[i])
             history_dict["states"].append(state_dict)
-        with open(filename, "w") as f:
-            json.dump(history_dict, f, indent = 4)
-        #json.dumps(history_dict)
+        return history_dict
 
