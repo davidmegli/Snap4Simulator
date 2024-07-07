@@ -48,10 +48,7 @@ class Road:
         return True
 
 
-class Line: #TODO: use this class to handle the lines of a multilane
-    #Step 1: replace vehicles list with a list of Line objects without changing the Lane methods (DONE)
-    #Step 2: add multiple lines feature to Lane (altready added Lane attribute to Vehicle, use it to get and set the line of the vehicle, then use
-    #the line as Line list index in Lane)
+class Line:
     def __init__(self, vehicles = None):
         self.vehicles = vehicles if vehicles else []
 
@@ -403,102 +400,7 @@ class Lane:
 
     def getLaneWhereVehicleIs(self, vehicle):
         return vehicle.getLane()
-
-'''class RoadWay(Lane):
-    def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
-        super().__init__(id, length, vehicleDistance, speedLimit, semaphores, startJunction, endJunction, priority)
-        self.lanes = []
-        
-    def __init__(self, id, lanes = []):
-        self.id = id
-        self.lanes = lanes
-
-    def addLane(self, lane):
-        self.lanes.append(lane)
-
-    def removeLane(self, lane):
-        self.lanes.remove(lane)
-
-    def getLane(self, id):
-        for lane in self.lanes:
-            if lane.id == id:
-                return lane
-            
-    def getLaneWithVehicle(self, vehicle):
-        for lane in self.lanes:
-            if lane.hasVehicle(vehicle):
-                return lane
-
-    def tryAddVehicle(self, vehicle, currentTime, position = 0):
-        for lane in self.lanes:
-            pos = lane.tryAddVehicle(vehicle, currentTime, position)
-            if pos >= 0:
-                return pos
-        return -1
-
-    def addVehicleToLane(self, vehicle, laneId, currentTime, position = 0):
-        lane = self.getLane(laneId)
-        self.addVehicleToLane(vehicle, lane, currentTime, position)
-
-    def addVehicleToLane(self, vehicle, lane, currentTime, position = 0):
-        if lane != None:
-            lane.addVehicle(vehicle, currentTime, position)
-
-    def tryAddVehicleToLane(self, vehicle, laneId, currentTime, position = 0):
-        lane = self.getLane(laneId)
-        return self.tryAddVehicleToLane(vehicle, lane, currentTime, position)
     
-    def tryAddVehicleToLane(self, vehicle, lane, currentTime, position = 0):
-        if lane != None:
-            return lane.tryAddVehicle(vehicle, currentTime, position)
-
-    def addStartJunction(self, junction):
-        for lane in self.lanes:
-            lane.addStartJunction(junction)
-
-    def addEndJunction(self, junction):
-        for lane in self.lanes:
-            lane.addEndJunction(junction)
-
-    def moveVehicles(self, time, timeStep = 1):
-        for lane in self.lanes:
-            lane.moveVehicles(time, timeStep)
-
-    def hasOutgoingVehicles(self, timeStep = 1):
-        for lane in self.lanes:
-            if lane.hasOutgoingVehicles(timeStep):
-                return True
-            
-    def getPriority(self):
-        return self.lanes[0].getPriority()
-    
-    def addSemaphoreAtEnd(self, semaphore):
-        for lane in self.lanes:
-            lane.addSemaphoreAtEnd(semaphore)
-
-    def isGreen(self, currentTime):
-        return self.lanes[0].isGreen(currentTime)
-    
-    def isRed(self, currentTime):
-        return self.lanes[0].isRed(currentTime)
-    
-    def getPriority(self):
-        return self.lanes[0].getPriority()
-    
-    def removeVehicle(self, vehicle):
-        for lane in self.lanes:
-            lane.removeVehicle(vehicle)
-
-    def waitForNextLane(self, vehicle, posToWaitAt):
-        for lane in self.lanes:
-            if lane.hasVehicle(vehicle):
-                lane.waitForNextLane(vehicle, posToWaitAt)
-
-    def giveWay(self, vehicle):
-        for lane in self.lanes:
-            if lane.hasVehicle(vehicle):
-                lane.giveWay(vehicle)'''
-
 class Semaphore:
     def __init__(self, greenTime, redTime, position = -1, yellowTime = 0, startTime = 0):
         self.greenTime = greenTime
