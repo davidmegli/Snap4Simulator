@@ -54,6 +54,8 @@ class Vehicle:
         travelTimes = [v.getTravelTime() for v in vehicles if v.isArrived()]
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles]
+        if len(travelTimes) == 0:
+            travelTimes = [0]
         return (min(travelTimes), max(travelTimes), sum(travelTimes)/len(travelTimes), min(stops), max(stops), sum(stops)/len(stops), min(timeWaited), max(timeWaited), sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0 )
 
     def getVehiclesMetricsAsString(vehicles):

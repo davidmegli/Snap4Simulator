@@ -41,13 +41,15 @@ def simulate():
     print("Adding semaphore at %d meters of Lane 0, green light: %ds, red light: %ds" % (laneLength/2, greenLight, redLight), file=f)
     for i in range(simulationCycles):
         time = i * timeStep
+        print("Time: %ds" % time, file=f)
         speed = random.uniform(minVehicleSpeed, maxVehicleSpeed)
         if i % spawningRate == 0 and i//spawningRate < vehicleCount:
             cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, min(speed,speedLimit), 0, topVehicleSpeed, maxAcceleration, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
             lane1.addVehicle(cars[i//spawningRate], time)
+            print("Vehicle %d added to lane 0 at time %ds" % (cars[i//spawningRate].id, time), file=f)
         lane1.moveVehicles(time,timeStep)
+        print("Moved vehicles in lane 0 at time %ds" % time, file=f)
         lane1History.saveState(lane1, time)
-        print("Time: %ds" % time, file=f)
         for car in cars:
             if lane1.hasVehicle(car):
                 print("Vehicle %d: pos: %d/%dm, speed: %dm/s (%dkm/h), acc: %dm/s^2, in lane %d" % (car.id, car.position,laneLength, car.speed, car.speed*3.6, car.acceleration, lane1.id), file=f)

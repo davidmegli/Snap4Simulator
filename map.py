@@ -166,7 +166,7 @@ class Lane:
         nextSemaphore = self.getNextSemaphore(vehicle.getPosition()) #I get the next semaphore
         nextSemPos = self.getSemaphorePosition(nextSemaphore) if nextSemaphore != None else -2 #I get the position of the semaphore
         redSemInFront = nextSemaphore is not None and nextSemaphore.isRed(currentTime) and nextPos >= nextSemPos
-        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle)
+        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
         vehicleInFront = precedingVehicle is not None and nextPos > safetyPositionFromPrecedingVehicle
         noCloseVehiclesOrSemaphores = not redSemInFront and not vehicleInFront
         if not vehicle.isGivingWay(): #if the vehicle is not giving way
@@ -183,8 +183,7 @@ class Lane:
                         self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=False)
             else: #if the vehicle is moving
                 if noCloseVehiclesOrSemaphores: #if the lane is free
-                    if precedingVehicle is not None:
-                        self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
+                    self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
                 elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
                     if nextSemPos < safetyPositionFromPrecedingVehicle: #if the red semaphore is closer
                         vehicle.stopAtSemaphore(nextSemPos) #stop at the semaphore
@@ -220,12 +219,13 @@ class Lane:
                 vehicle.setArrivalTime(currentTime)
 
     def moveAndOvertakeIfPossible(self, vehicle, precedingVehicle, laneIndex, currentTime, timeStep = 1, wasMoving = True):
-        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle)
+        hasPrecedingVehicle = precedingVehicle is not None
+        safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
         if wasMoving:
             newPosition = vehicle.move(self.speedLimit, timeStep)
         else:
             newPosition = vehicle.restart(self.speedLimit, timeStep)
-        if newPosition > safetyPositionFromPrecedingVehicle:
+        if hasPrecedingVehicle and newPosition > safetyPositionFromPrecedingVehicle:
             nextLaneIndex = laneIndex + 1
             nextLaneIsFree = self.isLaneFreeAtPosition(newPosition, nextLaneIndex)
             if nextLaneIsFree:
