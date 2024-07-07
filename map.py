@@ -686,7 +686,7 @@ class Intersection(Junction): #n incoming lanes, n outgoing lanes
 
     def incomingLane(self, vehicle):
         for lane in self.incomingLanes:
-            if vehicle in lane.getVehicles():
+            if lane.hasVehicle(vehicle):
                 return lane
         return None
 
