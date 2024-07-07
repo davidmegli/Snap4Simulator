@@ -28,7 +28,7 @@ def simulate():
     spawningRate = 1 #instantiate one vehicle every x cycles
     numberOfIncomingLanes = 3
     numberOfOutgoingLanes = 3
-    outputFile = "intersection_simulation_output.txt"
+    outputFile = "../output/intersection_simulation_output.txt"
     incomingLanes = []
     outgoingLanes = []
     outgoingFluxes = []
@@ -81,7 +81,7 @@ def simulate_bifurcation():
     spawningRate = 2 #instantiate one vehicle every x cycles
     numberOfIncomingLanes = 1
     numberOfOutgoingLanes = 2
-    outputFile = "bifurcation_intersection_simulation_output.txt"
+    outputFile = "../output/bifurcation_intersection_simulation_output.txt"
     incomingLanes = []
     outgoingLanes = []
     outgoingFluxes = []
@@ -139,7 +139,7 @@ def simulate_bifurcation_different_probabilities():
     spawningRate = 2 #instantiate one vehicle every x cycles
     numberOfIncomingLanes = 1
     numberOfOutgoingLanes = 2
-    outputFile = "bifurcation_intersection_simulation_output.txt"
+    outputFile = "../output/bifurcation_intersection_simulation_output.txt"
     incomingLanes = []
     outgoingLanes = []
     outgoingFluxes = []
@@ -196,7 +196,7 @@ def simulate_bifurcation_4_out():
     spawningRate = 2 #instantiate one vehicle every x cycles
     numberOfIncomingLanes = 1
     numberOfOutgoingLanes = 4
-    outputFile = "bifurcation_intersection_simulation_output.txt"
+    outputFile = "../output/bifurcation_intersection_simulation_output.txt"
     incomingLanes = []
     outgoingLanes = []
     outgoingFluxes = []
@@ -252,7 +252,7 @@ def simulate_merge():
     spawningRate = 1 #instantiate one vehicle every x cycles
     numberOfIncomingLanes = 2
     numberOfOutgoingLanes = 1
-    outputFile = "bifurcation_intersection_simulation_output.txt"
+    outputFile = "../output/bifurcation_intersection_simulation_output.txt"
     incomingLanes = []
     outgoingLanes = []
     outgoingFluxes = []

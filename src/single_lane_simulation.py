@@ -31,7 +31,7 @@ def simulate():
     lane1 = Lane(0, laneLength, 1, speedLimit) #id, length, vehicleDistance, speedLimit
     #lane1.addSemaphore(semaphore)
     lane1History = LaneHistory(lane1, laneLength / sectorsPerLane) #lane, sectorLength
-    outputFile = "single_lane_simulation_output.txt"
+    outputFile = "../output/single_lane_simulation_output.txt"
     cars = []
     f = open(outputFile, "w")
     print("Lane is %dm long, with a speed limit of %d" % (laneLength,speedLimit), file=f)
