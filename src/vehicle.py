@@ -11,6 +11,7 @@ stop at a semaphore, stop at a vehicle, give way to another vehicle, and restart
 I used constants to define the states a vehicle can be in
 """
 import random
+from statistics import median
 
 class Vehicle:
     STATE_STOPPED = "stopped"
@@ -40,6 +41,7 @@ class Vehicle:
         self.arrivalTime = -1
         self.numberOfStops = 0
         self.timeWaited = 0
+        self.departDelay = 0
         self.lane = 0
         #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
         #TODO: increment time waited and number of stops each time the vehicle stops, i.e. each time the speed was >0 and is set to 0
@@ -50,17 +52,18 @@ class Vehicle:
     #crea funzione che restituisce true se stato è uno di quelli che aspetta
 
     @staticmethod
-    def getVehiclesMetrics(vehicles): #returns the min, max and average travel time, the min, max and average number of stops, the min, max and average time waited
+    def getVehiclesMetrics(vehicles): #returns the min, max and average travel time, the min, max and average number of stops, the min, max and average time waited, the min, max and average departure delay
         travelTimes = [v.getTravelTime() for v in vehicles if v.isArrived()]
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles]
+        departDelays = [v.departDelay for v in vehicles]
         if len(travelTimes) == 0:
             travelTimes = [0]
-        return (min(travelTimes), max(travelTimes), sum(travelTimes)/len(travelTimes), min(stops), max(stops), sum(stops)/len(stops), min(timeWaited), max(timeWaited), sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0 )
+        return (min(travelTimes), max(travelTimes), median(travelTimes), sum(travelTimes)/len(travelTimes), min(stops), max(stops), median(stops), sum(stops)/len(stops), min(timeWaited), max(timeWaited), median(timeWaited), sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0 , min(departDelays), max(departDelays), median(departDelays), sum(departDelays)/len(departDelays) if len(departDelays) > 0 else 0)
 
     def getVehiclesMetricsAsString(vehicles):
         metrics = Vehicle.getVehiclesMetrics(vehicles)
-        return "Travel Times: min: %d, max: %d, avg: %d, Stops: min: %d, max: %d, avg: %d, Time Waited: min: %d, max: %d, avg: %d" % metrics
+        return "Duration: min: %d, max: %d, median: %d, average: %d\nStops: min: %d, max: %d, median: %d, average: %d\nTime Waited: min: %d, max: %d, median: %d, average: %d\nDeparture Delay: min: %d, max: %d, median: %d, average: %d" % metrics
 
     def movingState(self, state):
         return state == self.STATE_MOVING or state == self.STATE_FOLLOWING_VEHICLE
@@ -73,7 +76,10 @@ class Vehicle:
             self.timeWaited += currentTime - self.lastUpdate
         if self.isStopped() and (self.movingState(self.pastState) or self.lastUpdate == self.creationTime): #if the vehicle was moving and now is stopped, increment the number of stops
             self.numberOfStops += 1
-        self.pastState = self.state #update the past state
+        if self.waitingState(self.state) and self.pastState == self.STATE_CREATED: #if the vehicle was created and now is waiting, set the departure delay
+            self.departDelay = currentTime - self.creationTime
+        else:
+            self.pastState = self.state #update the past state
         self.lastUpdate = currentTime #update the last update time
 
     def isArrived(self):
@@ -95,7 +101,7 @@ class Vehicle:
         self.numberOfStops += 1
 
     def getTravelTime(self):
-        return self.arrivalTime - self.creationTime
+        return self.arrivalTime - self.creationTime - self.departDelay
     
     def getPosition(self):
         return self.position

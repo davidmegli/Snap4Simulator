@@ -19,17 +19,17 @@ def simulate():
     maxAcceleration = 0.8 #0.8 m/s^2
     vehicleLength = 5 #5m
     startingPosition = 0
-    vehicleCount = 100
+    vehicleCount = 1000000
     timeStep = 1 #cycle steps in seconds
     spawningRate = 1 #instantiate one vehicle every x cycles
     sectorsPerRoad = 10 #number of sectors in the road
-    roadLength = 500 #meters
-    simulationCycles = 3600
-    greenLight = 60 #seconds
-    redLight = 30 #seconds
-    semaphore = Semaphore(greenLight, redLight, 0, 0, -60)
+    roadLength = 1000 #meters
+    simulationCycles = 1800
+    greenLight = 40 #seconds
+    redLight = 20 #seconds
+    semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
     road1 = Road(0, roadLength, 1, speedLimit) #id, length, vehicleDistance, speedLimit
-    #road1.addSemaphore(semaphore)
+    road1.addSemaphore(semaphore)
     road1History = RoadHistory(road1, roadLength / sectorsPerRoad) #road, sectorLength
     outputFile = "../output/single_road_simulation_output.txt"
     cars = []
@@ -46,22 +46,22 @@ def simulate():
         if i % spawningRate == 0 and i//spawningRate < vehicleCount:
             cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, min(speed,speedLimit), 0, topVehicleSpeed, maxAcceleration, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
             road1.addVehicle(cars[i//spawningRate], time)
-            print("Vehicle %d added to road 0 at time %ds" % (cars[i//spawningRate].id, time), file=f)
         road1.moveVehicles(time,timeStep)
-        print("Moved vehicles in road 0 at time %ds" % time, file=f)
         road1History.saveState(road1, time)
         for car in cars:
             if road1.hasVehicle(car):
                 print("Vehicle %d: pos: %d/%dm, speed: %dm/s (%dkm/h), acc: %dm/s^2, in road %d" % (car.id, car.position,roadLength, car.speed, car.speed*3.6, car.acceleration, road1.id), file=f)
             elif car.position > roadLength:
                 print("Vehicle %d: pos: %d/%dm, out of road %d" % (car.id, car.position, roadLength, road1.id), file=f)
+        print("Cycle %d/%d" % (i,simulationCycles), end="\r")
 
     print("VEHICLES METRICS:", file=f)
     for car in cars:
-        #if car.isArrived():
-        print("Vehicle %d: " % car.id, end="", file=f)
-        print(car.getMetricsAsString(), file=f)
+        if car.isArrived():
+            print("Vehicle %d: " % car.id, end="", file=f)
+            print(car.getMetricsAsString(), file=f)
     print()
+    print("Simulation duration: %ds" % (simulationCycles * timeStep), file=f)
     print(Vehicle.getVehiclesMetricsAsString(cars), file=f)
     #roadHistory.printHistory()
     road1History.saveHistory("../output/single_road_road1.json")

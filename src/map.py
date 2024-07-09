@@ -137,7 +137,7 @@ class Road:
                 if noCloseVehiclesOrSemaphores: #if the lane is free
                     if safetyPositionFromPrecedingVehicle < 0:
                         vehicle.stopAtVehicle(0)
-                    elif precedingVehicle is not None:
+                    else:
                         self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=False)
                 elif redSemInFront: #if the next semaphore is red
                     pass #wait
@@ -193,6 +193,8 @@ class Road:
             nextLaneIsFree = self.isLaneFreeAtPosition(newPosition, nextLaneIndex)
             if nextLaneIsFree:
                 vehicle.setLane(nextLaneIndex)
+            elif precedingVehicle.isStopped():
+                vehicle.stopAtVehicle(safetyPositionFromPrecedingVehicle)
             else:
                 vehicle.followVehicle(precedingVehicle,self.vehicleDistance)
         self.limitSpeed(vehicle)
@@ -371,6 +373,9 @@ class Road:
         return vehicle.getLane()
     
 class Semaphore:
+    STATE_GREEN = "green"
+    STATE_YELLOW = "yellow"
+    STATE_RED = "red"
     def __init__(self, greenTime, redTime, position = -1, yellowTime = 0, startTime = 0):
         self.greenTime = greenTime
         self.redTime = redTime
@@ -394,21 +399,21 @@ class Semaphore:
         if currentTime >= self.startTime:
             timeInCycle = (currentTime - self.startTime) % self.totalCycleTime
             if timeInCycle < self.greenTime:
-                return "green"
+                return self.STATE_GREEN
             elif timeInCycle < self.greenTime + self.yellowTime:
-                return "yellow"
+                return self.STATE_YELLOW
             else:
-                return "red"
-        return "red"
+                return self.STATE_RED
+        return self.STATE_RED
     
     def isGreen(self, currentTime):
-        return self.getState(currentTime) == "green"
+        return self.getState(currentTime) == self.STATE_GREEN
     
     def isRed(self, currentTime):
-        return self.getState(currentTime) == "red"
+        return self.getState(currentTime) == self.STATE_RED
     
     def isYellow(self, currentTime):
-        return self.getState(currentTime) == "yellow"
+        return self.getState(currentTime) == self.STATE_YELLOW
     
     def isAtEnd(self):
         return self.position == -1
