@@ -40,6 +40,7 @@ class Lane:
 #the multilane will handle its lanes and call the lane methods. I must handle multilane going into junctions and merging into a single lane
 #the junction must handle all the lanes of a multilane as different lanes
 class Road:
+    SAFETY_DISTANCE_TO_INTERSECTION = 10
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length
@@ -225,8 +226,14 @@ class Road:
     def hasOutgoingVehicles(self, timeStep = 1):
         vehicles = self.getAllVehicles()
         for vehicle in vehicles:
-            if vehicle.calculatePosition(timeStep) > self.length:
+            position = vehicle.calculatePosition(timeStep)
+            positionToIntersection = self.length - self.SAFETY_DISTANCE_TO_INTERSECTION
+            if position > self.length:
                 return True
+            elif position > positionToIntersection:
+                if random.uniform(0,1) < (position - positionToIntersection) / self.SAFETY_DISTANCE_TO_INTERSECTION:
+                    return True
+        return False
     
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.getAllVehicles().copy()

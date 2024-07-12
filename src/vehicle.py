@@ -22,7 +22,7 @@ class Vehicle:
     STATE_FOLLOWING_VEHICLE = "following"
     STATE_GIVING_WAY = "giving_way" #"precedenza"
     STATE_CREATED = "created"
-    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0):
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 1):
         self.id = id
         self.length = length #meters
         self.initialPosition = initialPosition
@@ -34,6 +34,8 @@ class Vehicle:
         self.creationTime = creationTime
         self.lastUpdate = creationTime
         self.sigma = sigma
+        self.reactionTime = reactionTime #seconds
+        self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
         self.setPosition(initialPosition)
         self.setSpeed(initialSpeed) #m/s
         self.setAcceleration(initialAcceleration) #m/s^2

@@ -95,4 +95,62 @@ class RoadHistory:
                 state_dict["DensityPerSectorPerLane"].append(state.densityPerSectorPerLane[i])
             history_dict["states"].append(state_dict)
         return history_dict
+    
+    def getMetrics(self):
+        #calculates average density, average vehicles per sector, average longest traffic queue
+        totalDensity = 0
+        totalVehicles = 0
+        totalLongestTrafficQueue = 0
+        for state in self.states:
+            totalDensity += sum(state.densityPerSector)
+            totalVehicles += sum(state.vehiclesPerSector)
+            totalLongestTrafficQueue += state.longestTrafficQueue
+        return {
+            "road": self.road.id,
+            "sectorLength": self.sectorLength,
+            "averageDensity": totalDensity / len(self.states) / state.numSectors,
+            "averageVehiclesPerSector": totalVehicles / len(self.states) / state.numSectors,
+            "averageLongestTrafficQueue": totalLongestTrafficQueue * self.sectorLength / len(self.states)
+        }
+    
+    def saveMetrics(self, filename):
+        metrics = self.getMetrics()
+        with open(filename, "w") as f:
+            json.dump(metrics, f, indent = 4)
 
+class MapHistory:
+    def __init__(self, roads, sectorLength = 100):
+        self.roads = roads
+        self.roadHistories = []
+        for road in roads:
+            self.roadHistories.append(RoadHistory(road, sectorLength))
+        
+    def saveState(self, time):
+        for roadHistory in self.roadHistories:
+            roadHistory.saveState(roadHistory.road, time)
+
+    def saveHistory(self, filename):
+        history_dict = self.getHistoryDict()
+        with open(filename, "w") as f:
+            json.dump(history_dict, f, indent = 4)
+
+    def getHistoryDict(self):
+        history_dict = {
+            "roads": []
+            }
+        for roadHistory in self.roadHistories:
+            history_dict["roads"].append(roadHistory.getHistoryDict())
+        return history_dict
+
+    def getMetrics(self):
+        metrics = {
+            "metrics": []
+        }
+        for roadHistory in self.roadHistories:
+            metrics["metrics"].append(roadHistory.getMetrics())
+        return metrics
+
+    def saveMetrics(self, filename):
+        metrics = self.getMetrics()
+        with open(filename, "w") as f:
+            json.dump(metrics, f, indent = 4)
