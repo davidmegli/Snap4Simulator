@@ -66,20 +66,6 @@ class Road:
     
     def addVehicleToLane(self, vehicle, currentTime, position, laneIndex):
         precedingVehicle = self.precedingVehicle(vehicle, laneIndex)
-        if currentTime == 0:
-            print("Adding vehicle %d to road %s, lane %d" % (vehicle.id, self, laneIndex))
-            print("Preceding vehicle: %s" % (precedingVehicle))
-
-        if currentTime == 72 and (vehicle.id == 0 or vehicle.id == 1):
-            print("Adding vehicle %d to road %s, lane %d" % (vehicle.id, self, laneIndex))
-            print("Current vehicle: %s" % (vehicle))
-            print("Preceding vehicle: %s" % (precedingVehicle))
-            if self.getVehiclesInLane(laneIndex):
-                print("Vehicles in lane %d: %s" % (laneIndex, [v.id for v in self.getVehiclesInLane(laneIndex)]))
-                v = self.getVehiclesInLane(laneIndex)[0]
-                print("Preceding vehicle: %s" % (v))
-            else:
-                print("No vehicles in lane %d" % laneIndex)
         firstSem = self.getFirstSemaphore()
         if precedingVehicle is not None:
             precedingVehiclePosition = precedingVehicle.getPosition()
