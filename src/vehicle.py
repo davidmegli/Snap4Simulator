@@ -146,6 +146,9 @@ class Vehicle:
         with open(filename, "w") as f:
             json.dump(Vehicle.getVehiclesMetricsAsJSON(vehicles), f, indent = 4)
 
+    def wasJustCreated(self):
+        return self.pastState == self.STATE_CREATED
+
     # Returns true if the vehicle is in a moving state
     def movingState(self, state):
         return state == self.STATE_MOVING or state == self.STATE_FOLLOWING_VEHICLE

@@ -22,3 +22,5 @@ bifurcation.txt
 single_road_road1_metrics.json
 merge_metrics.json
 merge.txt
+src/__pycache__/map.cpython-311.pyc
+src/__pycache__/vehicle.cpython-311.pyc

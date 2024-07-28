@@ -66,14 +66,26 @@ class Road:
     
     def addVehicleToLane(self, vehicle, currentTime, position, laneIndex):
         precedingVehicle = self.precedingVehicle(vehicle, laneIndex)
+        if currentTime == 74: #debug
+            print("Adding vehicle %d to road %d at position %d" % (vehicle.id, self.id, position))
+            print("preceding vehicle: %s" % precedingVehicle)
+            print("Current vehicle: %s" % vehicle)
+            print("self.getVehiclesInLane(laneIndex): %s" % self.getVehiclesInLane(laneIndex))
         firstSem = self.getFirstSemaphore()
         if precedingVehicle is not None:
             precedingVehiclePosition = precedingVehicle.getPosition()
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
+            if currentTime == 74: #debug
+                print("Preceding vehicle %d at position %d, safety position: %d" % (precedingVehicle.id, precedingVehiclePosition, safetyPosition))
+                print("current vehicle position: %d" % position)
             if precedingVehiclePosition < 0:
                 position = safetyPosition
+                if not vehicle.wasJustCreated():
+                    return position
             if safetyPosition <= 0:
                 position = safetyPosition
+                if not vehicle.wasJustCreated():
+                    return position
                 vehicle.stopAtVehicle(0) #solve increasing negative position problem
             else:
                 if position > safetyPosition:
@@ -264,17 +276,19 @@ class Road:
 
     def precedingVehicle(self, vehicle, laneIndex = 0): #I get the preceding vehicle of the current vehicle, Vehicles must be ordered by position
         vehicles = self.getVehiclesInLane(laneIndex)
-        if vehicles is None or len(vehicles) <= 0:
+        if vehicles is None or len(vehicles) <= 0: #no vehicles
             return None
-        if len(vehicles) == 1 and vehicles[0] == vehicle:
-            return None
+        if len(vehicles) == 1: #one vehicle
+            if vehicles[0] == vehicle:
+                return None
+            return vehicles[0]
         for i in range(len(vehicles)):
-            if len(vehicles) == 1 and vehicles[i] != vehicle:
-                return vehicles[i]
             if vehicles[i] == vehicle:
-                if i > 0:
+                if i >= 1:
                     return vehicles[i-1]
-                break
+                return None
+        #if there are more than 1 vehicles and the vehicle is not in the list, I return the first vehicle
+        return vehicles[-1]
         return None
 
     def followingVehicle(self, vehicle): #I get the following vehicle of the current vehicle, Vehicles must be ordered by position
