@@ -149,7 +149,7 @@ def merge():
     spawningRate = 1 #instantiate one vehicle every x cycles
     sectorsPerRoad = 10 #number of sectors in the road
     roadLength = 500 #meters
-    simulationCycles = 3600
+    simulationCycles = 600
     greenLight = 40 #seconds
     redLight = 20 #seconds
     #semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
@@ -176,12 +176,14 @@ def merge():
         speed = random.uniform(minVehicleSpeed, maxVehicleSpeed)
         if i % spawningRate == 0 and i//spawningRate < vehicleCount:
             cars.append(Vehicle(i//spawningRate, vehicleLength, startingPosition, min(speed,speedLimit), topAcceleration, topVehicleSpeed, maxAcceleration, time)) #id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration
-            if addToRoad0:
+            '''if addToRoad0:
                 road1.addVehicle(cars[i//spawningRate], time)
                 addToRoad0 = False
             else:
                 road2.addVehicle(cars[i//spawningRate], time)
-                addToRoad0 = True
+                addToRoad0 = True'''
+            road1.addVehicle(cars[i//spawningRate], time)
+            road2.addVehicle(cars[i//spawningRate], time)
         road1.moveVehicles(time,timeStep)
         road2.moveVehicles(time,timeStep)
         road3.moveVehicles(time,timeStep)

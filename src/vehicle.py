@@ -12,8 +12,57 @@ I used constants to define the states a vehicle can be in
 """
 import random
 from statistics import median
+import json
 
+# VehicleState represent the state of a vehicle at a given time, including the time, position, speed, acceleration and state of the vehicle
+class VehicleState:
+    def __init__(self, time, position, speed, acceleration, state):
+        self.time = time
+        self.position = position
+        self.speed = speed
+        self.acceleration = acceleration
+        self.state = state
+
+    def setTime(self, time):
+        self.time = time
+
+    def setPosition(self, position):
+        self.position = position
+
+    def setSpeed(self, speed):
+        self.speed = speed
+
+    def setAcceleration(self, acceleration):
+        self.acceleration = acceleration
+
+    def setState(self, state):
+        self.state = state
+
+    def getPosition(self):
+        return self.position
+
+    def getSpeed(self):
+        return self.speed
+
+    def getAcceleration(self):
+        return self.acceleration
+
+    def getState(self):
+        return self.state
+
+    def getMetrics(self):
+        return (self.time, self.position, self.speed, self.acceleration, self.state)
+
+    def getMetricsAsString(self):
+        return "Time: %d, Position: %d, Speed: %d, Acceleration: %d, State: %s" % self.getMetrics()
+
+    def getMetricsAsJSON(self):
+        metrics = self.getMetrics()
+        return {"Time": metrics[0], "Position": metrics[1], "Speed": metrics[2], "Acceleration": metrics[3], "State": metrics[4]}
+
+# Vehicle is one of the main classes, it represents a vehicle in the simulation, with its states (time, position, speed, acceleration)
 class Vehicle:
+    # Constants that represent the states a vehicle can be in
     STATE_STOPPED = "stopped"
     STATE_MOVING = "moving"
     STATE_WAITING_SEMAPHORE = "semaphore"
@@ -24,17 +73,17 @@ class Vehicle:
     STATE_CREATED = "created"
     def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 1):
         self.id = id
-        self.length = length #meters
-        self.initialPosition = initialPosition
+        self.length = length # vehicle length in meters
+        self.initialPosition = initialPosition # initial position in meters
         self.initialSpeed = initialSpeed if initialSpeed > 0 else 0
         self.initialSpeed = min(self.initialSpeed, maxSpeed)
         self.initialAcceleration = initialAcceleration
-        self.maxSpeed = maxSpeed #m/s
-        self.maxAcceleration = maxAcceleration #m/s^2
+        self.maxSpeed = maxSpeed # vehicle top speed in m/s
+        self.maxAcceleration = maxAcceleration # m/s^2
         self.creationTime = creationTime
-        self.lastUpdate = creationTime
+        self.lastUpdate = creationTime # last time the vehicle was updated
         self.sigma = sigma
-        self.reactionTime = reactionTime #seconds
+        self.reactionTime = reactionTime # seconds
         self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
         self.setPosition(initialPosition)
         self.setSpeed(initialSpeed) #m/s
@@ -45,6 +94,7 @@ class Vehicle:
         self.timeWaited = 0
         self.departDelay = 0
         self.lane = 0
+        self.stateHistory: list[VehicleState] = []
         #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
         #TODO: increment time waited and number of stops each time the vehicle stops, i.e. each time the speed was >0 and is set to 0
         #be careful, sometimes in moveVehicle the vehicle is moved just to check if the next position would collide, in those case it shouldn't count as stop, since
@@ -53,26 +103,58 @@ class Vehicle:
 
     #crea funzione che restituisce true se stato è uno di quelli che aspetta
 
+    # Static method that returns the metrics of a given list of vehicles
     @staticmethod
-    def getVehiclesMetrics(vehicles): #returns the min, max and average travel time, the min, max and average number of stops, the min, max and average time waited, the min, max and average departure delay
+    def getVehiclesMetrics(vehicles):
         travelTimes = [v.getTravelTime() for v in vehicles if v.isArrived()]
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles]
         departDelays = [v.departDelay for v in vehicles]
         if len(travelTimes) == 0:
             travelTimes = [0]
-        return (min(travelTimes), max(travelTimes), median(travelTimes), sum(travelTimes)/len(travelTimes), min(stops), max(stops), median(stops), sum(stops)/len(stops), min(timeWaited), max(timeWaited), median(timeWaited), sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0 , min(departDelays), max(departDelays), median(departDelays), sum(departDelays)/len(departDelays) if len(departDelays) > 0 else 0)
+        minTravelTime = min(travelTimes) if len(travelTimes) > 0 else 0
+        maxTravelTime = max(travelTimes) if len(travelTimes) > 0 else 0
+        medianTravelTime = median(travelTimes) if len(travelTimes) > 0 else 0
+        avgTravelTime = sum(travelTimes)/len(travelTimes) if len(travelTimes) > 0 else 0
+        minStops = min(stops) if len(stops) > 0 else 0
+        maxStops = max(stops) if len(stops) > 0 else 0
+        medianStops = median(stops) if len(stops) > 0 else 0
+        avgStops = sum(stops)/len(stops) if len(stops) > 0 else 0
+        minTimeWaited = min(timeWaited) if len(timeWaited) > 0 else 0
+        maxTimeWaited = max(timeWaited) if len(timeWaited) > 0 else 0
+        medianTimeWaited = median(timeWaited) if len(timeWaited) > 0 else 0
+        avgTimeWaited = sum(timeWaited)/len(timeWaited) if len(timeWaited) > 0 else 0
+        minDepartDelay = min(departDelays) if len(departDelays) > 0 else 0
+        maxDepartDelay = max(departDelays) if len(departDelays) > 0 else 0
+        medianDepartDelay = median(departDelays) if len(departDelays) > 0 else 0
+        avgDepartDelay = sum(departDelays)/len(departDelays) if len(departDelays) > 0 else 0
+        return (minTravelTime, maxTravelTime, medianTravelTime, avgTravelTime, minStops, maxStops, medianStops, avgStops, minTimeWaited, maxTimeWaited, medianTimeWaited, avgTimeWaited, minDepartDelay, maxDepartDelay, medianDepartDelay, avgDepartDelay)
 
+    @staticmethod
     def getVehiclesMetricsAsString(vehicles):
         metrics = Vehicle.getVehiclesMetrics(vehicles)
         return "Duration: min: %d, max: %d, median: %d, average: %d\nStops: min: %d, max: %d, median: %d, average: %d\nTime Waited: min: %d, max: %d, median: %d, average: %d\nDeparture Delay: min: %d, max: %d, median: %d, average: %d" % metrics
+    
+    @staticmethod
+    def getVehiclesMetricsAsJSON(vehicles):
+        metrics = Vehicle.getVehiclesMetrics(vehicles)
+        return {"Duration": {"min": metrics[0], "max": metrics[1], "median": metrics[2], "average": metrics[3]}, "Stops": {"min": metrics[4], "max": metrics[5], "median": metrics[6], "average": metrics[7]}, "TimeWaited": {"min": metrics[8], "max": metrics[9], "median": metrics[10], "average": metrics[11]}, "DepartureDelay": {"min": metrics[12], "max": metrics[13], "median": metrics[14], "average": metrics[15]}}
 
+    @staticmethod
+    def saveVehiclesMetrics(vehicles, filename):
+        metrics = Vehicle.getVehiclesMetrics(vehicles)
+        with open(filename, "w") as f:
+            json.dump(Vehicle.getVehiclesMetricsAsJSON(vehicles), f, indent = 4)
+
+    # Returns true if the vehicle is in a moving state
     def movingState(self, state):
         return state == self.STATE_MOVING or state == self.STATE_FOLLOWING_VEHICLE
     
+    # Returns true if the vehicle is in a waiting state
     def waitingState(self, state):
         return state == self.STATE_WAITING_SEMAPHORE or state == self.STATE_WAITING_VEHICLE or state == self.STATE_WAITING_TO_ENTER or state == self.STATE_GIVING_WAY or state == self.STATE_STOPPED
 
+    # Function called to commit the state of the vehicle at a given time
     def update(self,currentTime):
         if self.waitingState(self.pastState): #or self.pastState == self.STATE_CREATED: #if the vehicle was waiting, increment the time waited
             self.timeWaited += currentTime - self.lastUpdate
@@ -83,6 +165,7 @@ class Vehicle:
         else:
             self.pastState = self.state #update the past state
         self.lastUpdate = currentTime #update the last update time
+        self.saveState(currentTime)
 
     def isArrived(self):
         return self.arrivalTime >= 0
@@ -239,37 +322,45 @@ class Vehicle:
 
     def getLane(self):
         return self.lane
+    
+    # Function called in the update function to save the state of the vehicle at a given time in the vehicle state history
+    def saveState(self, time):
+        pastTime = self.stateHistory[-1].time if len(self.stateHistory) > 0 else self.creationTime
+        pastSpeed = self.stateHistory[-1].speed if len(self.stateHistory) > 0 else self.initialSpeed
+        acceleration = (self.speed - pastSpeed) / (time - pastTime) if time - pastTime > 0 else 0
+        self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state))
 
 class Car(Vehicle):
-    def __init__(self, id, initialSpeed, initialPosition):
-        length = 5
-        maxSpeed = 41.67 #m/s = 150 km/h
-        maxAcceleration = 0.8 #m/s^2
-        super().__init__(id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration)
-
+    LENGTH = 5
+    MAX_SPEED = 41.67 #m/s = 150 km/h
+    MAX_ACCELERATION = 0.8 #m/s^2
+    REACTION_TIME = 1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
+        super().__init__(id, Car.LENGTH, initialPosition, initialSpeed, 0, Car.MAX_SPEED, Car.MAX_ACCELERATION, creationTime, sigma, reactionTime)
 
 class Bus(Vehicle):
-    def __init__(self, id, initialSpeed, initialPosition):
-        length = 10
-        maxSpeed = 33.33 #m/s = 120 km/h
-        maxAcceleration = 0.6 #m/s^2
-        super().__init__(id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration)
-
+    LENGTH = 12
+    MAX_SPEED = 33.33 #m/s = 120 km/h
+    MAX_ACCELERATION = 0.6 #m/s^2
+    REACTION_TIME = 1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
+        super().__init__(id, Bus.LENGTH, initialPosition, initialSpeed, 0, Bus.MAX_SPEED, Bus.MAX_ACCELERATION, creationTime, sigma, reactionTime)
 
 class Bicicle(Vehicle):
-    def __init__(self, id, initialSpeed, initialPosition):
-        length = 2
-        maxSpeed = 16.67 #m/s = 60 km/h
-        maxAcceleration = 0.4 #m/s^2
-        super().__init__(id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration)
-
+    LENGTH = 2
+    MAX_SPEED = 13.89 #m/s = 50 km/h
+    MAX_ACCELERATION = 0.4 #m/s^2
+    REACTION_TIME = 1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
+        super().__init__(id, Bicicle.LENGTH, initialPosition, initialSpeed, 0, Bicicle.MAX_SPEED, Bicicle.MAX_ACCELERATION, creationTime, sigma, reactionTime)
 
 class Pedestrian(Vehicle):
-    def __init__(self, id, initialSpeed, initialPosition):
-        length = 1
-        maxSpeed = 5.56 #m/s = 20 km/h
-        maxAcceleration = 0.2 #m/s^2
-        super().__init__(id, length, initialSpeed, initialPosition, maxSpeed, maxAcceleration)
+    LENGTH = 1
+    MAX_SPEED = 2.78 #m/s = 10 km/h
+    MAX_ACCELERATION = 0.2 #m/s^2
+    REACTION_TIME = 1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
+        super().__init__(id, Pedestrian.LENGTH, initialPosition, initialSpeed, 0, Pedestrian.MAX_SPEED, Pedestrian.MAX_ACCELERATION, creationTime, sigma, reactionTime)
 
 
         
