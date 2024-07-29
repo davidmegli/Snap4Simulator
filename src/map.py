@@ -42,6 +42,7 @@ class Lane:
 class Road:
     SAFETY_DISTANCE_TO_INTERSECTION = 10 #distance before the intersection where the vehicle is considered to be at the intersection and the next vehicle is not allowed to enter
     SAFETY_DISTANCE_AFTER_INTERSECTION = 5 #distance after the intersection where the vehicle is considered to have passed it and the next vehicle is allowed to enter
+    BRAKING_DISTANCE  = 20 #distance from stop/semaphore before the vehicle starts braking
     def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
         self.id = id
         self.length = length

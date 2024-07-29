@@ -103,36 +103,63 @@ class Simulation:
         print(Vehicle.getVehiclesMetricsAsString(self.vehicles), file=f)
         self.history.saveMetrics(roadsMetricsJsonFile)
 
-def simulate():
-    minVehicleSpeed = 7#40/3.6 #40 km/h in m/s
-    maxVehicleSpeed = 7#40/3.6
-    topVehicleSpeed = 150/3.6 #150 km/h in m/s
-    #topAcceleration = 0#.8 #0.8 m/s^2
-    speedLimit = 100/3.6 #100 km/h in m/s
-    maxAcceleration = 3
-    vehicleLength = 5 #5m
-    startingPosition = 0
-    vehicleCount = 1000000
-    timeStep = 1 #cycle steps in seconds
-    spawningRate = 1 #instantiate one vehicle every x cycles
-    sectorsPerRoad = 10 #number of sectors in the road
-    roadLength = 500 #meters
-    simulationCycles = 600
-    greenLight = 40 #seconds
-    redLight = 20 #seconds
-    simulationName = "merge_sim"
 
+minVehicleSpeed = 7#40/3.6 #40 km/h in m/s
+maxVehicleSpeed = 7#40/3.6
+topVehicleSpeed = 150/3.6 #150 km/h in m/s
+#topAcceleration = 0#.8 #0.8 m/s^2
+speedLimit = 100/3.6 #100 km/h in m/s
+maxAcceleration = 4
+vehicleLength = 5 #5m
+startingPosition = 0
+vehicleCount = 1000000
+timeStep = 1 #cycle steps in seconds
+spawningRate = 1 #instantiate one vehicle every x cycles
+sectorsPerRoad = 10 #number of sectors in the road
+roadLength = 500 #meters
+singleRoadLen = 1000
+simulationCycles = 600
+greenLight = 40 #seconds
+redLight = 20 #seconds
+
+def single_road():
+    simulationName = "single_road_sim"
+    simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
+    road = simulation.addRoad(singleRoadLen, 1, speedLimit, True)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, 1)
+    simulation.simulate()
+
+def single_road_semaphore():
+    simulationName = "single_road_semaphore_sim"
+    simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
+    semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
+    road = simulation.addRoad(singleRoadLen, 1, speedLimit, True)
+    road.addSemaphore(semaphore)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, 1)
+    simulation.simulate()
+
+def merge():
+    simulationName = "merge_sim"
     simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
     #semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
     inRoads = simulation.addRoads(roadLength, 1, speedLimit, 2, True)
     outRoads = simulation.addRoads(roadLength, 1, speedLimit, 1)
     #road1.addSemaphore(semaphore)
-    bifurcation = simulation.addIntersection(inRoads, outRoads, [1])
-    
+    merge = simulation.addIntersection(inRoads, outRoads, [1])
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, 1)
+    simulation.simulate()
+
+def bifurcation():
+    simulationName = "bifurcation_sim"
+    simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
+    inroads = simulation.addRoads(roadLength, 1, speedLimit, 1, True)
+    outroads = simulation.addRoads(roadLength, 1, speedLimit, 2)
+    bifurcation = simulation.addIntersection(inroads, outroads, [0.8, 0.2])
     simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, 1)
     simulation.simulate()
 
 if __name__ == "__main__":
-    #single_road_semaphore()
-    #bifurcation()
-    simulate()
+    single_road()
+    single_road_semaphore()
+    merge()
+    bifurcation()
