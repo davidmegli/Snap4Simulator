@@ -287,7 +287,20 @@ class Vehicle:
             return 0'''
         return 0
 
+    def brakeToStopAt(self, position, timeStep = 1.0):
+        if self.position >= position:
+            self.stop()
+            return self.position
+        acc = - self.speed**2 / (2 * (position - self.position)) #v^2 = u^2 + 2*a*s, accelerazione in funzione di velocità e spazio di frenata
+        speed = self.calculateSpeed(acc, timeStep)
+        pos = self.calculatePosition(acc, timeStep)
+        self.setPosition(pos)
+        self.setSpeed(max(speed, 0))
+        self.setAcceleration(acc)
+        return self.getPosition()
+
     def stopAt(self, position):
+        #TODO: everytime this func is called start to decelerate the vehicle
         self.setPosition(position)
         self.stop()
 

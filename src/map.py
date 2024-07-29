@@ -153,6 +153,12 @@ class Road:
                         self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=False)
             else: #if the vehicle is moving
                 if noCloseVehiclesOrSemaphores: #if the lane is free
+                    #I check if there is a vehicle in front or a red semaphore at breaking distance
+                    posOfNextVeh = precedingVehicle.getPosition() if hasPrecedingVehicle else 9999999
+                    posOfNextSem = nextSemPos if nextSemPos >= 0 else 9999999
+                    minPos = min(posOfNextVeh, posOfNextSem)
+                    if minPos < vehicle.getPosition() + self.BRAKING_DISTANCE: #if there is a vehicle or a red semaphore at breaking distance
+                        vehicle.brakeToStopAt(minPos)
                     self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
                 elif redSemInFront and vehicleInFront: #if the next semaphore is red and there is a vehicle in front
                     if nextSemPos < safetyPositionFromPrecedingVehicle: #if the red semaphore is closer
