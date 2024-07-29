@@ -73,10 +73,12 @@ class Simulation:
 
     def simulate(self):
         output = "../output/%s_simulation_output_%i.txt" % (self.simulationName, self.simulationCycles)
+        vehHistoryMetricsFile = "../output/%s_vehicles_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         vehMetricsFile = "../output/%s_vehicles_metrics_%i.txt" % (self.simulationName, self.simulationCycles)
         roadsMetricsJsonFile = "../output/%s_road_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         f = open(vehMetricsFile, "w")
         f2 = open(output, "w")
+        f3 = open(vehHistoryMetricsFile, "w")
         self.history = MapHistory(self.roads, self.sectorLength)
         for i in range(self.simulationCycles):
             time = i * self.timeStep
@@ -95,6 +97,7 @@ class Simulation:
             if vehicle.isArrived():
                 print("Vehicle %d: " % vehicle.id, end="", file=f)
                 print(vehicle.getMetricsAsString(), file=f)
+                #print(Vehicle.getVehicleStateHistoryMetricsAsJSON(vehicle), file=f3, end=",\n")
         print()
         print("Simulation duration: %ds" % (self.simulationCycles * self.timeStep), file=f)
         print(Vehicle.getVehiclesMetricsAsString(self.vehicles), file=f)
@@ -104,9 +107,9 @@ def simulate():
     minVehicleSpeed = 7#40/3.6 #40 km/h in m/s
     maxVehicleSpeed = 7#40/3.6
     topVehicleSpeed = 150/3.6 #150 km/h in m/s
-    topAcceleration = 0#.8 #0.8 m/s^2
+    #topAcceleration = 0#.8 #0.8 m/s^2
     speedLimit = 100/3.6 #100 km/h in m/s
-    maxAcceleration = 0.8 #0.8 m/s^2
+    maxAcceleration = 3
     vehicleLength = 5 #5m
     startingPosition = 0
     vehicleCount = 1000000
@@ -118,12 +121,14 @@ def simulate():
     greenLight = 40 #seconds
     redLight = 20 #seconds
     simulationName = "merge_sim"
+
     simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
     #semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
     inRoads = simulation.addRoads(roadLength, 1, speedLimit, 2, True)
     outRoads = simulation.addRoads(roadLength, 1, speedLimit, 1)
     #road1.addSemaphore(semaphore)
     bifurcation = simulation.addIntersection(inRoads, outRoads, [1])
+    
     simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, 1)
     simulation.simulate()
 

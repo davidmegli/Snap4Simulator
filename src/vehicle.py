@@ -71,21 +71,24 @@ class Vehicle:
     STATE_FOLLOWING_VEHICLE = "following"
     STATE_GIVING_WAY = "giving_way" #"precedenza"
     STATE_CREATED = "created"
+    STATE_ACCELERATING = "accelerating"
+    STATE_BREAKING = "breaking"
     def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 1):
         self.id = id
         self.length = length # vehicle length in meters
         self.initialPosition = initialPosition # initial position in meters
-        self.initialSpeed = initialSpeed if initialSpeed > 0 else 0
+        self.initialSpeed: float = float(initialSpeed) if initialSpeed > 0 else 0.0
         self.initialSpeed = min(self.initialSpeed, maxSpeed)
         self.initialAcceleration = initialAcceleration
         self.maxSpeed = maxSpeed # vehicle top speed in m/s
-        self.maxAcceleration = maxAcceleration # m/s^2
+        self.maxAcceleration = maxAcceleration if maxAcceleration is not None else 1 # m/s^2
         self.creationTime = creationTime
         self.lastUpdate = creationTime # last time the vehicle was updated
         self.sigma = sigma
-        self.reactionTime = reactionTime # seconds
-        self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
+        self.reactionTime: float = float(reactionTime) # seconds
+        #self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
         self.setPosition(initialPosition)
+        self.setState(self.STATE_CREATED)
         self.setSpeed(initialSpeed) #m/s
         self.setAcceleration(initialAcceleration) #m/s^2
         self.pastState = self.STATE_CREATED
@@ -145,6 +148,30 @@ class Vehicle:
         metrics = Vehicle.getVehiclesMetrics(vehicles)
         with open(filename, "w") as f:
             json.dump(Vehicle.getVehiclesMetricsAsJSON(vehicles), f, indent = 4)
+
+    def getVehicleStateHistory(self):
+        return self.stateHistory
+    
+    def getVehicleStateHistoryAsJSON(self):
+        return [state.getMetricsAsJSON() for state in self.stateHistory]
+    
+    def getVehicleStateHistoryMetrics(self):
+        avgSpeed = sum([state.speed for state in self.stateHistory])/len(self.stateHistory) if len(self.stateHistory) > 0 else 0
+        avgAcceleration = sum([state.acceleration for state in self.stateHistory])/len(self.stateHistory) if len(self.stateHistory) > 0 else 0
+        timeWaitingSemaphore = 0
+        for i in range(1,len(self.stateHistory)):
+            if self.stateHistory[i].state == self.STATE_WAITING_SEMAPHORE:
+                timeWaitingSemaphore += self.stateHistory[i].time - self.stateHistory[i-1].time
+        return (avgSpeed, avgAcceleration)
+    
+    def getVehicleStateHistoryMetricsAsJSON(self):
+        metrics = self.getVehicleStateHistoryMetrics()
+        return {"VehicleID": self.id, "AverageSpeed": metrics[0], "AverageAcceleration": metrics[1]}
+    
+    def saveVehicleStateHistoryMetrics(self, filename):
+        metrics = self.getVehicleStateHistoryMetrics()
+        with open(filename, "w") as f:
+            json.dump(self.getVehicleStateHistoryMetricsAsJSON(), f, indent = 4)
 
     def wasJustCreated(self):
         return self.pastState == self.STATE_CREATED
@@ -206,12 +233,14 @@ class Vehicle:
     def setSpeed(self, speed):
         if speed > self.maxSpeed:
             speed = self.maxSpeed
+        self.speed = float(speed)
+        if self.state == self.STATE_ACCELERATING:
+            return
         if speed <= 0:
             speed = 0
             self.setState(self.STATE_STOPPED)
         else:
             self.setState(self.STATE_MOVING)
-        self.speed = speed
 
     def setAcceleration(self, acceleration):
         if acceleration <= self.maxAcceleration:
@@ -222,21 +251,32 @@ class Vehicle:
     def setState(self, state):
         self.state = state
     
-    def move(self, speedLimit, timeStep = 1, lane = -1):
-        self.setPosition(self.calculatePosition(timeStep))
-        self.setSpeed(min(random.gauss(self.calculateSpeed(timeStep),self.sigma),speedLimit))
-        self.setAcceleration(self.calculateAcceleration(timeStep))
+    def move(self, speedLimit, timeStep = 1.0, lane = -1):
+        step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
+        if self.state == self.STATE_ACCELERATING:
+            if self.id <=3:  #DEBUG
+                print("move() restarting veh: %s"%self.id)
+            self.restart(speedLimit, step)
+            return self.getPosition()
+        acc = self.calculateAcceleration(step)
+        speed = min(random.gauss(self.calculateSpeed(acc, step),self.sigma),speedLimit)
+        pos = self.calculatePosition(acc, step)
+        self.setPosition(pos)
+        self.setSpeed(speed)
+        self.setAcceleration(acc)
         if lane >= 0:
             self.setLane(lane)
         return self.getPosition()
 
-    def calculatePosition(self, timeStep = 1):
-        return self.position + self.speed * timeStep + 0.5 * self.acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
+    def calculatePosition(self, acceleration, timeStep = 1.0):
+        return self.position + self.speed * timeStep + 0.5 * acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
     
-    def calculateSpeed(self, timeStep = 1):
-        return min(self.speed + self.acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
+    def calculateSpeed(self, acceleration, timeStep = 1.0):
+        if self.id <=3: #DEBUG
+            print("calculateSpeed() Speed: %s, Acc: %s, Time: %s" % (self.speed, acceleration, timeStep))
+        return min(self.speed + acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
     
-    def calculateAcceleration(self, timeStep = 1):
+    def calculateAcceleration(self, timeStep = 1.0):
         '''if random.uniform(0, 1) < 0.5:
             return min(self.acceleration + random.gauss(0, self.sigma), self.maxAcceleration)
         else:
@@ -267,7 +307,22 @@ class Vehicle:
         self.setPosition(position)
         self.setState(self.STATE_MOVING)
 
-    def restart(self, speedLimit, timeStep = 1):
+    def restart(self, speedLimit, timeStep = 1.0):
+        self.setState(self.STATE_ACCELERATING)
+        acc = self.maxAcceleration
+        if self.id <= 3: #DEBUG
+            print("Vehicle: %s acc: %s" % (self.id, acc))
+        speed = self.calculateSpeed(acc, timeStep)
+        if self.id <=3: #DEBUG
+            print("Vehicle: %s, pos: %s, speed: %s, acc: %s" % (self.id, self.position,speed,acc))
+        if speed >= self.maxSpeed:
+            self.setState(self.STATE_MOVING)
+        self.setSpeed(min(speed,speedLimit))
+        self.setAcceleration(acc)
+        pos = self.calculatePosition(self.maxAcceleration, timeStep)
+        self.setPosition(pos)
+        return self.getPosition()#NEW _> FIXME: THE PROBLEM IS HERE!!!
+    def restarte(self, speedLimit, timeStep = 1): #OLD
         self.setSpeed(min(self.initialSpeed,speedLimit))
         self.setAcceleration(0)
         self.setPosition(self.calculatePosition(timeStep))
@@ -291,7 +346,7 @@ class Vehicle:
         return {"Departure": metrics[0], "InitialPos": metrics[1], "InitialSpeed": metrics[2], "Arrival": metrics[3], "FinalSpeed": metrics[4], "TravelTime": metrics[5], "Stops": metrics[6], "TimeWaited": metrics[7]}
     
     def isStopped(self):
-        return self.speed == 0
+        return (self.speed == 0 or self.state == self.STATE_BREAKING) and self.state != self.STATE_ACCELERATING
     
     def isMoving(self):
         return self.speed > 0
@@ -314,7 +369,7 @@ class Vehicle:
     def followVehicle(self, vehicle, distance):
         self.setPosition(vehicle.getPosition() - vehicle.length - distance)
         self.setSpeed(vehicle.speed)
-        self.setAcceleration(0)
+        #self.setAcceleration(0)
         if self.getSpeed() > 0:
             self.setState(self.STATE_FOLLOWING_VEHICLE)
         else:
