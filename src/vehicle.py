@@ -40,6 +40,9 @@ class VehicleState:
 
     def getPosition(self):
         return self.position
+    
+    def getBackPosition(self):
+        return self.position - self.length
 
     def getSpeed(self):
         return self.speed
