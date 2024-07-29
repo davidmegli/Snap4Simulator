@@ -254,8 +254,6 @@ class Vehicle:
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
         if self.state == self.STATE_ACCELERATING:
-            if self.id <=3:  #DEBUG
-                print("move() restarting veh: %s"%self.id)
             self.restart(speedLimit, step)
             return self.getPosition()
         acc = self.calculateAcceleration(step)
@@ -272,8 +270,6 @@ class Vehicle:
         return self.position + self.speed * timeStep + 0.5 * acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
     
     def calculateSpeed(self, acceleration, timeStep = 1.0):
-        if self.id <=3: #DEBUG
-            print("calculateSpeed() Speed: %s, Acc: %s, Time: %s" % (self.speed, acceleration, timeStep))
         return min(self.speed + acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
     
     def calculateAcceleration(self, timeStep = 1.0):
@@ -310,22 +306,13 @@ class Vehicle:
     def restart(self, speedLimit, timeStep = 1.0):
         self.setState(self.STATE_ACCELERATING)
         acc = self.maxAcceleration
-        if self.id <= 3: #DEBUG
-            print("Vehicle: %s acc: %s" % (self.id, acc))
         speed = self.calculateSpeed(acc, timeStep)
-        if self.id <=3: #DEBUG
-            print("Vehicle: %s, pos: %s, speed: %s, acc: %s" % (self.id, self.position,speed,acc))
         if speed >= self.maxSpeed:
             self.setState(self.STATE_MOVING)
         self.setSpeed(min(speed,speedLimit))
         self.setAcceleration(acc)
         pos = self.calculatePosition(self.maxAcceleration, timeStep)
         self.setPosition(pos)
-        return self.getPosition()#NEW _> FIXME: THE PROBLEM IS HERE!!!
-    def restarte(self, speedLimit, timeStep = 1): #OLD
-        self.setSpeed(min(self.initialSpeed,speedLimit))
-        self.setAcceleration(0)
-        self.setPosition(self.calculatePosition(timeStep))
         return self.getPosition()
 
     def getState(self):
