@@ -269,8 +269,6 @@ class Vehicle:
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
         if self.state == self.STATE_ACCELERATING:
-            if self.id<=6: #DEBUG
-                print("Vehicle %s: move() -> calling restart()" % self.id)
             self.restart(speedLimit, step)
             return self.getPosition()
         acc = self.calculateAcceleration(step)
@@ -341,18 +339,9 @@ class Vehicle:
             self.cumulativeDelay = self.reactionTime # in any case I must add the reaction time to the cumulative delay
             if precedingVehicle is not None: # if there is a preceding vehicle
                 self.cumulativeDelay += precedingVehicle.getCumulativeDelay() # I also add its cumulative delay
-            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
-        
-        if self.id <= 6: #DEBUG
-            print("VEHICLE %d restarting with delay %f, last update time: %f" % (self.id, self.cumulativeDelay, self.lastUpdate))
-            if precedingVehicle is not None:
-                print("Previous vehicle delay: %f, reaction time: %f" % (precedingVehicle.getCumulativeDelay(), precedingVehicle.reactionTime))
-            print("timeStep: %f, reactionTime: %f, cumulativeDelay: %f" % (timeStep, self.reactionTime, self.cumulativeDelay))
-        
+            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay        
         step = max (timeStep - self.currentDelay, 0)
         self.currentDelay = max (self.currentDelay - timeStep, 0)
-        if self.id <= 6: #DEBUG
-            print("After calclulations: timeStep: %f, reactionTime: %f, cumulativeDelay: %f" % (timeStep, self.reactionTime, self.cumulativeDelay))
         self.setState(self.STATE_ACCELERATING)
         acc = self.maxAcceleration
         speed = self.calculateSpeed(acc, step)

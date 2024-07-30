@@ -69,12 +69,6 @@ class Road:
         precedingVehicle = self.precedingVehicle(vehicle, laneIndex)
         hasPrecedingVehicle = precedingVehicle is not None
         firstSem = self.getFirstSemaphore()
-        if vehicle.id <= 1: #DEBUG
-            print("VEHICLE %s addVehicleToLane() Time: %d" % (vehicle.id, currentTime))
-            print("Vehicle %s is entering the road, position: %d, speed: %d" % (vehicle.id, position, vehicle.speed))
-            print("vehicle state: %s" % vehicle.state)
-            print("hasPrecedingVehicle: %s" % hasPrecedingVehicle)
-            print("precedingVehiclePosition: %d" % (precedingVehicle.position if hasPrecedingVehicle else -1))
         if hasPrecedingVehicle:
             precedingVehiclePosition = precedingVehicle.getPosition()
             safetyPosition = self.safetyPositionFrom(precedingVehicle)
@@ -131,16 +125,9 @@ class Road:
         self.endJunction = junction
 
     def moveVehicle(self, vehicle, currentTime, timeStep = 1):
-        
-        if vehicle.id <= 1 and currentTime <=5: #DEBUG
-            print("VEHICLE %s moveVehicle() Time: %d" % (vehicle.id, currentTime))
         if vehicle.lastUpdate == currentTime and not vehicle.wasJustCreated():
-            if vehicle.id <= 1 and currentTime <=5: #DEBUG
-                print("Vehicle %s is already updated" % vehicle.id)
             return False
         if not self.hasVehicle(vehicle): #no vehicle no party
-            if vehicle.id <= 1 and currentTime <=5: #DEBUG
-                print("Vehicle %s is not in the road" % vehicle.id)
             return False
         laneIndex = self.getLaneWhereVehicleIs(vehicle)
         vehicles = self.getVehiclesInLane(laneIndex)
@@ -157,9 +144,6 @@ class Road:
         hasNoCloseVehiclesOrRedSemaphores = not hasCloseRedSem and not hasClosePrecVehicle
         if not vehicle.isGivingWay(): #if the vehicle is not giving way
             if vehicle.isStopped():
-                if vehicle.id <= 1: #DEBUG
-                    print("Vehicle %s moveVehicle() Time: %d" % (vehicle.id, currentTime))
-                    print("Vehicle %s is stopped, state: %s" % (vehicle.id ,vehicle.state))
                 if hasNoCloseVehiclesOrRedSemaphores: #if the lane is free
                     if safetyPositionFromPrecedingVehicle < 0:
                         vehicle.stopAtVehicle(0)
@@ -176,8 +160,6 @@ class Road:
                     posOfNextStoppedVehicle = safetyPositionFromPrecedingVehicle if isPrecedingVehicleStopped else 9999999
                     posOfNextRedSemaphore = nextSemPos if IsNextSemRed else 9999999
                     minPos = min(posOfNextStoppedVehicle, posOfNextRedSemaphore)
-                    if currentTime <= 5: #DEBUG
-                        print("vehicle: %d, minPos: %d, vehiclePos: %d, safetyPos: %d" % (vehicle.id, minPos, vehicle.getPosition(), safetyPositionFromPrecedingVehicle))
                     if minPos < vehicle.getPosition() + self.BRAKING_DISTANCE: #if there is a vehicle or a red semaphore at breaking distance
                         vehicle.brakeToStopAt(minPos)
                     self.moveAndOvertakeIfPossible(vehicle, precedingVehicle, laneIndex, currentTime, timeStep, wasMoving=True)
@@ -204,8 +186,6 @@ class Road:
             if vehicle in vehicles and vehicle.isGivingWay():
                 vehicle.setPosition(oldPosition) #if the vehicle has to keep waiting, I reset its position to the previous one
         vehicle.update(currentTime)
-        if vehicle.id <= 1 and currentTime <=5: #DEBUG
-            print("Vehicle %s: ENDOF moveVehicle() -> vehicle state: %s" % (vehicle.id, vehicle.state))
         return True
     
     def endOfRoadHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
@@ -222,8 +202,6 @@ class Road:
         if wasMoving:
             newPosition = vehicle.move(self.speedLimit, timeStep)
         else:
-            if vehicle.id <=5: #DEBUG
-                print("Vehicle %s: moveAndOvertakeIfPossible() -> calling restart()" %vehicle.id)
             newPosition = vehicle.restart(self.speedLimit, timeStep, precedingVehicle)
         if hasPrecedingVehicle and newPosition > safetyPositionFromPrecedingVehicle:
             nextLaneIndex = laneIndex + 1
@@ -233,8 +211,6 @@ class Road:
             elif precedingVehicle.isStopped():
                 vehicle.stopAtVehicle(safetyPositionFromPrecedingVehicle)
             else:
-                if vehicle.id <=5: #DEBUG
-                    print("Vehicle %s: moveAndOvertakeIfPossible() -> calling followVehicle()" %vehicle.id)
                 vehicle.followVehicle(precedingVehicle,self.vehicleDistance)
         self.limitSpeed(vehicle)
 
