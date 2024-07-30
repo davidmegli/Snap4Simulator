@@ -73,7 +73,7 @@ class Vehicle:
     STATE_CREATED = "created"
     STATE_ACCELERATING = "accelerating"
     STATE_BRAKING = "braking"
-    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 1):
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8):
         self.id = id
         self.length = length # vehicle length in meters
         self.initialPosition = initialPosition # initial position in meters
@@ -86,6 +86,10 @@ class Vehicle:
         self.lastUpdate = creationTime # last time the vehicle was updated
         self.sigma = sigma
         self.reactionTime: float = float(reactionTime) # seconds
+        self.cumulativeDelay = 0
+        self.currentDelay = 0
+        # represents the cumulative time delay to restart the vehicle
+        # e.g. at a stop the vehicles will start one after the other with a delay
         #self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
         self.setPosition(initialPosition)
         self.setState(self.STATE_CREATED)
@@ -265,6 +269,8 @@ class Vehicle:
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
         if self.state == self.STATE_ACCELERATING:
+            if self.id<=6: #DEBUG
+                print("Vehicle %s: move() -> calling restart()" % self.id)
             self.restart(speedLimit, step)
             return self.getPosition()
         acc = self.calculateAcceleration(step)
@@ -327,25 +333,39 @@ class Vehicle:
         self.setPosition(position)
         self.setState(self.STATE_MOVING)
 
-    def restart(self, speedLimit, timeStep = 1.0):
+    def restart(self, speedLimit, timeStep = 1.0, precedingVehicle = None):
         # if the past state it was not accelerating it means that the current time is
-        # the first time the vehicle is restarting, so I must introduce here the
-        # reaction time
-        if self.pastState != self.STATE_ACCELERATING:
-            timeStep = min (timeStep - self.reactionTime, 0.01)
-        # I choose as time step the original time step minus the reaction time,
-        # I limit the reaction time to a single time step, so that I can handle the
-        # restart delay in one time step
+        # the first time the vehicle is restarting, so I calculate the delay to restart
+        # as a sum of the preveious vehicle dela plus the current vehicle's reaction time
+        if self.pastState != self.STATE_ACCELERATING: # first time step in which the vehicle is restarting
+            self.cumulativeDelay = self.reactionTime # in any case I must add the reaction time to the cumulative delay
+            if precedingVehicle is not None: # if there is a preceding vehicle
+                self.cumulativeDelay += precedingVehicle.getCumulativeDelay() # I also add its cumulative delay
+            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
+        
+        if self.id <= 6: #DEBUG
+            print("VEHICLE %d restarting with delay %f, last update time: %f" % (self.id, self.cumulativeDelay, self.lastUpdate))
+            if precedingVehicle is not None:
+                print("Previous vehicle delay: %f, reaction time: %f" % (precedingVehicle.getCumulativeDelay(), precedingVehicle.reactionTime))
+            print("timeStep: %f, reactionTime: %f, cumulativeDelay: %f" % (timeStep, self.reactionTime, self.cumulativeDelay))
+        
+        step = max (timeStep - self.currentDelay, 0)
+        self.currentDelay = max (self.currentDelay - timeStep, 0)
+        if self.id <= 6: #DEBUG
+            print("After calclulations: timeStep: %f, reactionTime: %f, cumulativeDelay: %f" % (timeStep, self.reactionTime, self.cumulativeDelay))
         self.setState(self.STATE_ACCELERATING)
         acc = self.maxAcceleration
-        speed = self.calculateSpeed(acc, timeStep)
+        speed = self.calculateSpeed(acc, step)
         if speed >= self.maxSpeed:
             self.setState(self.STATE_MOVING)
         self.setSpeed(min(speed,speedLimit))
         self.setAcceleration(acc)
-        pos = self.calculatePosition(self.maxAcceleration, timeStep)
+        pos = self.calculatePosition(self.maxAcceleration, step)
         self.setPosition(pos)
         return self.getPosition()
+
+    def getCumulativeDelay(self):
+        return self.cumulativeDelay
 
     def getState(self):
         return (self.position, self.speed, self.acceleration)
@@ -365,10 +385,13 @@ class Vehicle:
         return {"CreationTime": metrics[0], "DepartureDelay": metrics[1], "InitialPos": metrics[2], "InitialSpeed": metrics[3], "Arrival": metrics[4], "FinalSpeed": metrics[5], "TravelTime": metrics[6], "Stops": metrics[7], "TimeWaited": metrics[8]}
     
     def isStopped(self):
-        return (self.speed == 0 or self.state == self.STATE_BRAKING) and self.state != self.STATE_ACCELERATING
+        # the vehicle is considered stopped if the vehicle has speed = 0 or is braking
+        # AND it's not accelerating.
+        # The vehicle is considered NOT stopped if it's accelerating, even if it still has speed = 0
+        return (self.speed == 0 or self.state == self.STATE_BRAKING) and self.state != self.STATE_ACCELERATING and self.state != self.STATE_CREATED
     
     def isMoving(self):
-        return self.speed > 0
+        return self.speed > 0 or self.state == self.STATE_ACCELERATING
     
     def isFollowing(self):
         return self.state == self.STATE_FOLLOWING_VEHICLE
@@ -407,8 +430,6 @@ class Vehicle:
         if time <= pastTime:
             return
         acceleration = (self.speed - pastSpeed) / (time - pastTime) if time > pastTime and time > self.creationTime else 0
-        if acceleration != 0:
-            print("Acceleration is : %f" % acceleration)
         self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state))
 
 class Car(Vehicle):
