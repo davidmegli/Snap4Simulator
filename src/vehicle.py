@@ -40,9 +40,6 @@ class VehicleState:
 
     def getPosition(self):
         return self.position
-    
-    def getBackPosition(self):
-        return self.position - self.length
 
     def getSpeed(self):
         return self.speed
@@ -232,6 +229,9 @@ class Vehicle:
     def getPosition(self):
         return self.position
     
+    def getBackPosition(self):
+        return self.position - self.length
+    
     def getSpeed(self):
         return self.speed
     
@@ -328,6 +328,14 @@ class Vehicle:
         self.setState(self.STATE_MOVING)
 
     def restart(self, speedLimit, timeStep = 1.0):
+        # if the past state it was not accelerating it means that the current time is
+        # the first time the vehicle is restarting, so I must introduce here the
+        # reaction time
+        if self.pastState != self.STATE_ACCELERATING:
+            timeStep = min (timeStep - self.reactionTime, 0.01)
+        # I choose as time step the original time step minus the reaction time,
+        # I limit the reaction time to a single time step, so that I can handle the
+        # restart delay in one time step
         self.setState(self.STATE_ACCELERATING)
         acc = self.maxAcceleration
         speed = self.calculateSpeed(acc, timeStep)
