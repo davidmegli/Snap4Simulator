@@ -117,6 +117,8 @@ class Vehicle:
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles]
         departDelays = [v.departDelay for v in vehicles]
+        for v in vehicles:
+            print("Vehicle %d: %s" % (v.id, v.getMetricsAsString()))
         if len(travelTimes) == 0:
             travelTimes = [0]
         minTravelTime = min(travelTimes) if len(travelTimes) > 0 else 0
@@ -194,7 +196,7 @@ class Vehicle:
     
     # Returns true if the vehicle is in a waiting state
     def waitingState(self, state):
-        return state == self.STATE_WAITING_SEMAPHORE or state == self.STATE_WAITING_VEHICLE or state == self.STATE_WAITING_TO_ENTER or state == self.STATE_GIVING_WAY or state == self.STATE_STOPPED
+        return state == self.STATE_WAITING_SEMAPHORE or state == self.STATE_WAITING_VEHICLE or state == self.STATE_WAITING_TO_ENTER or state == self.STATE_GIVING_WAY or state == self.STATE_STOPPED or (state == self.STATE_ACCELERATING and self.speed == 0)
 
     # Function called to commit the state of the vehicle at a given time
     def update(self,currentTime):
@@ -339,7 +341,7 @@ class Vehicle:
             self.cumulativeDelay = self.reactionTime # in any case I must add the reaction time to the cumulative delay
             if precedingVehicle is not None: # if there is a preceding vehicle
                 self.cumulativeDelay += precedingVehicle.getCumulativeDelay() # I also add its cumulative delay
-            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay        
+            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
         step = max (timeStep - self.currentDelay, 0)
         self.currentDelay = max (self.currentDelay - timeStep, 0)
         self.setState(self.STATE_ACCELERATING)

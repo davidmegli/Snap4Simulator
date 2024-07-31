@@ -29,7 +29,7 @@ class Simulation:
         self.simulationName = simulationName
         self.vehicleInjectionRate = vehicleInjectionRate
    
-    def addVehicleType(self,length: int = 5, initialPos: int = 0, initialSpeed: int = 7, initialAcceleration: int = 0, maxSpeed: int = 7, maxAcceleration: int = 0.8, creationTime: int = 0, sigma: float = 0.0, reactionTime: int = 1):
+    def addVehicleType(self,length: int = 5, initialPos: int = 0, initialSpeed: int = 7, initialAcceleration: int = 0, maxSpeed: int = 7, maxAcceleration: int = 0.8, creationTime: int = 0, sigma: float = 0.0, reactionTime: int = 0.8):
         self.vehicleTypes.append(Vehicle(self.vehicleTypeCount, length, initialPos, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime, sigma, reactionTime))
         self.vehicleTypeCount += 1
         return self.vehicleTypes[-1]
@@ -61,7 +61,7 @@ class Simulation:
         for vehicle in self.vehicleTypes:
             if cycle % self.vehicleInjectionRate == 0:        
                 for road in self.startingRoads:
-                    veh = Vehicle(self.vehicleCount, vehicle.length, 0, vehicle.initialSpeed, vehicle.initialAcceleration, vehicle.maxSpeed, vehicle.maxAcceleration, time)
+                    veh = Vehicle(self.vehicleCount, vehicle.length, 0, vehicle.initialSpeed, vehicle.initialAcceleration, vehicle.maxSpeed, vehicle.maxAcceleration, time, vehicle.sigma, vehicle.reactionTime)
                     road.addVehicle(veh,time)
                     self.vehicles.append(veh)
                     self.vehicleCount += 1
@@ -122,12 +122,13 @@ simulationCycles = 600
 greenLight = 40 #seconds
 redLight = 20 #seconds
 reactionTime = 0.5
+sigma = 0.0
 
 def single_road():
     simulationName = "single_road_sim"
     simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
     road = simulation.addRoad(singleRoadLen, 1, speedLimit, True)
-    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, reactionTime)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
 def single_road_semaphore():
@@ -136,7 +137,7 @@ def single_road_semaphore():
     semaphore = Semaphore(greenLight, redLight, 800, 0, 0)
     road = simulation.addRoad(singleRoadLen, 1, speedLimit, True)
     road.addSemaphore(semaphore)
-    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, reactionTime)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
 def merge():
@@ -147,7 +148,7 @@ def merge():
     outRoads = simulation.addRoads(roadLength, 1, speedLimit, 1)
     #road1.addSemaphore(semaphore)
     merge = simulation.addIntersection(inRoads, outRoads, [1])
-    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, reactionTime)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
 def bifurcation():
@@ -156,7 +157,7 @@ def bifurcation():
     inroads = simulation.addRoads(roadLength, 1, speedLimit, 1, True)
     outroads = simulation.addRoads(roadLength, 1, speedLimit, 2)
     bifurcation = simulation.addIntersection(inroads, outroads, [0.8, 0.2])
-    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, 0.0, reactionTime)
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
 if __name__ == "__main__":
