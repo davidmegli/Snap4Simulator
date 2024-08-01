@@ -87,7 +87,9 @@ class Vehicle:
         self.sigma = sigma
         self.reactionTime: float = float(reactionTime) # seconds
         self.cumulativeDelay = 0
+        self.maxCumulativeDelay = 15
         self.currentDelay = 0
+        self.isDeparted = False
         # represents the cumulative time delay to restart the vehicle
         # e.g. at a stop the vehicles will start one after the other with a delay
         #self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
@@ -115,8 +117,8 @@ class Vehicle:
     def getVehiclesMetrics(vehicles):
         travelTimes = [v.getTravelTime() for v in vehicles if v.isArrived()]
         stops = [v.getNumberOfStops() for v in vehicles]
-        timeWaited = [v.timeWaited for v in vehicles]
-        departDelays = [v.departDelay for v in vehicles]
+        timeWaited = [v.timeWaited for v in vehicles if v.isArrived()]
+        departDelays = [v.departDelay for v in vehicles if v.isArrived()]
         for v in vehicles:
             print("Vehicle %d: %s" % (v.id, v.getMetricsAsString()))
         if len(travelTimes) == 0:
@@ -145,17 +147,18 @@ class Vehicle:
             avgAcc += m[1]
         avgSpeed /= len(vehicles)
         avgAcc /= len(vehicles)
-        return (minTravelTime, maxTravelTime, medianTravelTime, avgTravelTime, minStops, maxStops, medianStops, avgStops, minTimeWaited, maxTimeWaited, medianTimeWaited, avgTimeWaited, minDepartDelay, maxDepartDelay, medianDepartDelay, avgDepartDelay, avgSpeed, avgAcc)
+        arrivedVehicles = len([v for v in vehicles if v.isArrived()])
+        return (minTravelTime, maxTravelTime, medianTravelTime, avgTravelTime, minStops, maxStops, medianStops, avgStops, minTimeWaited, maxTimeWaited, medianTimeWaited, avgTimeWaited, minDepartDelay, maxDepartDelay, medianDepartDelay, avgDepartDelay, avgSpeed, avgAcc, arrivedVehicles)
 
     @staticmethod
     def getVehiclesMetricsAsString(vehicles):
         metrics = Vehicle.getVehiclesMetrics(vehicles)
-        return "Duration: min: %d, max: %d, median: %d, average: %d\nStops: min: %d, max: %d, median: %d, average: %d\nTime Waited: min: %d, max: %d, median: %d, average: %d\nDeparture Delay: min: %d, max: %d, median: %d, average: %d\nAverage Speed: %f\nAverage Acceleration: %f" % metrics
+        return "Duration: min: %f, max: %f, median: %f, average: %f\nStops: min: %f, max: %f, median: %f, average: %f\nTime Waited: min: %f, max: %f, median: %f, average: %f\nDeparture Delay: min: %f, max: %f, median: %f, average: %f\nAverage Speed: %f\nAverage Acceleration: %f\nArrived Vehicles: %d" % metrics
     
     @staticmethod
     def getVehiclesMetricsAsJSON(vehicles):
         metrics = Vehicle.getVehiclesMetrics(vehicles)
-        return {"Duration": {"min": metrics[0], "max": metrics[1], "median": metrics[2], "average": metrics[3]}, "Stops": {"min": metrics[4], "max": metrics[5], "median": metrics[6], "average": metrics[7]}, "TimeWaited": {"min": metrics[8], "max": metrics[9], "median": metrics[10], "average": metrics[11]}, "DepartureDelay": {"min": metrics[12], "max": metrics[13], "median": metrics[14], "average": metrics[15]}, "AverageSpeed": metrics[16], "AverageAcceleration": metrics[17]}
+        return {"Duration": {"min": metrics[0], "max": metrics[1], "median": metrics[2], "average": metrics[3]}, "Stops": {"min": metrics[4], "max": metrics[5], "median": metrics[6], "average": metrics[7]}, "TimeWaited": {"min": metrics[8], "max": metrics[9], "median": metrics[10], "average": metrics[11]}, "DepartureDelay": {"min": metrics[12], "max": metrics[13], "median": metrics[14], "average": metrics[15]}, "AverageSpeed": metrics[16], "AverageAcceleration": metrics[17], "ArrivedVehicles": metrics[18]}
 
     @staticmethod
     def saveVehiclesMetrics(vehicles, filename):
@@ -258,6 +261,7 @@ class Vehicle:
             self.setState(self.STATE_STOPPED)
         else:
             self.setState(self.STATE_MOVING)
+            self.isDeparted = True
 
     def setAcceleration(self, acceleration):
         if acceleration <= self.maxAcceleration:
@@ -274,7 +278,7 @@ class Vehicle:
             self.restart(speedLimit, step)
             return self.getPosition()
         acc = self.calculateAcceleration(step)
-        speed = min(random.gauss(self.calculateSpeed(acc, step),self.sigma),speedLimit)
+        speed = min(random.gauss(self.calculateSpeed(acc, step),0),speedLimit)
         pos = self.calculatePosition(acc, step)
         self.setPosition(pos)
         self.setSpeed(speed)
@@ -338,10 +342,15 @@ class Vehicle:
         # the first time the vehicle is restarting, so I calculate the delay to restart
         # as a sum of the preveious vehicle dela plus the current vehicle's reaction time
         if self.pastState != self.STATE_ACCELERATING: # first time step in which the vehicle is restarting
-            self.cumulativeDelay = self.reactionTime # in any case I must add the reaction time to the cumulative delay
-            if precedingVehicle is not None: # if there is a preceding vehicle
-                self.cumulativeDelay += precedingVehicle.getCumulativeDelay() # I also add its cumulative delay
-            self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
+            if self.isDeparted:
+                precCumulativeDelay = precedingVehicle.getCumulativeDelay() if precedingVehicle is not None else 0
+                self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
+                if precedingVehicle is not None: # if there is a preceding vehicle
+                    self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
+                self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
+            else:
+                self.cumulativeDelay = 0
+                self.currentDelay = 0
         step = max (timeStep - self.currentDelay, 0)
         self.currentDelay = max (self.currentDelay - timeStep, 0)
         self.setState(self.STATE_ACCELERATING)
@@ -356,7 +365,7 @@ class Vehicle:
         return self.getPosition()
 
     def getCumulativeDelay(self):
-        return self.cumulativeDelay
+        return min ( self.cumulativeDelay, self.maxCumulativeDelay )
 
     def getState(self):
         return (self.position, self.speed, self.acceleration)

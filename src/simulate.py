@@ -121,7 +121,7 @@ singleRoadLen = 1000
 simulationCycles = 600
 greenLight = 40 #seconds
 redLight = 20 #seconds
-reactionTime = 0.5
+reactionTime = 0.3
 sigma = 0.0
 
 def single_road():
@@ -151,6 +151,22 @@ def merge():
     simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
+def merge_sem():
+    green = 40
+    red = 40
+    delay1 = red
+    simulationName = "merge_sem_sim"
+    simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
+    semaphore1 = Semaphore(green, red, roadLength, 0, delay1)
+    semaphore2 = Semaphore(green, red, roadLength, 0, 0)
+    inRoads = simulation.addRoads(roadLength, 1, speedLimit, 2, True)
+    inRoads[0].addSemaphore(semaphore1)
+    inRoads[1].addSemaphore(semaphore2)
+    outRoads = simulation.addRoads(roadLength, 1, speedLimit, 1)
+    merge = simulation.addIntersection(inRoads, outRoads, [1])
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
+    simulation.simulate()
+
 def bifurcation():
     simulationName = "bifurcation_sim"
     simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
@@ -160,8 +176,21 @@ def bifurcation():
     simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
     simulation.simulate()
 
+def bifurcation_sem():
+    simulationName = "bifurcation_sem_sim"
+    simulation = Simulation(simulationCycles, timeStep, spawningRate, roadLength / sectorsPerRoad, simulationName)
+    semaphore = Semaphore(greenLight, redLight, 500, 0, 0)
+    inroads = simulation.addRoads(roadLength, 1, speedLimit, 1, True)
+    inroads[0].addSemaphore(semaphore)
+    outroads = simulation.addRoads(roadLength, 1, speedLimit, 2)
+    bifurcation = simulation.addIntersection(inroads, outroads, [0.8, 0.2])
+    simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime)
+    simulation.simulate()
+
 if __name__ == "__main__":
     single_road()
     single_road_semaphore()
-    merge()
+    #merge()
     bifurcation()
+    bifurcation_sem()
+    merge_sem()
