@@ -73,7 +73,7 @@ class Vehicle:
     STATE_CREATED = "created"
     STATE_ACCELERATING = "accelerating"
     STATE_BRAKING = "braking"
-    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8):
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8, reactionTimeAtSemaphore = 2.0, maxCumulativeDelayAtSemaphore = 20.0):
         self.id = id
         self.length = length # vehicle length in meters
         self.initialPosition = initialPosition # initial position in meters
@@ -86,9 +86,10 @@ class Vehicle:
         self.lastUpdate = creationTime # last time the vehicle was updated
         self.sigma = sigma
         self.reactionTime: float = float(reactionTime) # seconds
-        self.cumulativeDelay = 0
-        self.maxCumulativeDelay = 15
-        self.currentDelay = 0
+        self.reactionTimeAtSemaphore: float = float(reactionTimeAtSemaphore) # seconds
+        self.cumulativeDelay = 0.0
+        self.maxCumulativeDelay = float(maxCumulativeDelayAtSemaphore) if maxCumulativeDelayAtSemaphore is not None else 20.0
+        self.currentDelay = 0.0
         self.isDeparted = False
         # represents the cumulative time delay to restart the vehicle
         # e.g. at a stop the vehicles will start one after the other with a delay
@@ -98,10 +99,10 @@ class Vehicle:
         self.setSpeed(initialSpeed) #m/s
         self.setAcceleration(initialAcceleration) #m/s^2
         self.pastState = self.STATE_CREATED
-        self.arrivalTime = -1
-        self.numberOfStops = 0
-        self.timeWaited = 0
-        self.departDelay = 0
+        self.arrivalTime = -1.0
+        self.numberOfStops = 0.0
+        self.timeWaited = 0.0
+        self.departDelay = 0.0
         self.lane = 0
         self.stateHistory: list[VehicleState] = []
         #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
@@ -119,8 +120,8 @@ class Vehicle:
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles if v.isArrived()]
         departDelays = [v.departDelay for v in vehicles if v.isArrived()]
-        for v in vehicles:
-            print("Vehicle %d: %s" % (v.id, v.getMetricsAsString()))
+        #for v in vehicles:
+         #   print("Vehicle %d: %s" % (v.id, v.getMetricsAsString()))
         if len(travelTimes) == 0:
             travelTimes = [0]
         minTravelTime = min(travelTimes) if len(travelTimes) > 0 else 0
@@ -203,7 +204,7 @@ class Vehicle:
 
     # Function called to commit the state of the vehicle at a given time
     def update(self,currentTime):
-        if self.waitingState(self.pastState): #or self.pastState == self.STATE_CREATED: #if the vehicle was waiting, increment the time waited
+        if self.waitingState(self.pastState) and self.getSpeed() == 0: #or self.pastState == self.STATE_CREATED: #if the vehicle was waiting, increment the time waited
             self.timeWaited += currentTime - self.lastUpdate
         if self.isStopped() and (self.movingState(self.pastState) or self.lastUpdate == self.creationTime): #if the vehicle was moving and now is stopped, increment the number of stops
             self.numberOfStops += 1
@@ -274,6 +275,8 @@ class Vehicle:
     
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
+        if self.id == 133 and self.position <=5: #DEBUG #print everything about the vehicle
+            print("Move() step: %f [before] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if self.state == self.STATE_ACCELERATING:
             self.restart(speedLimit, step)
             return self.getPosition()
@@ -283,12 +286,17 @@ class Vehicle:
         self.setPosition(pos)
         self.setSpeed(speed)
         self.setAcceleration(acc)
+        if self.id == 133 and self.position <=5: #DEBUG #print everything about the vehicle
+            print("Move() step: %f [after] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if lane >= 0:
             self.setLane(lane)
         return self.getPosition()
 
     def calculatePosition(self, acceleration, timeStep = 1.0):
-        return self.position + self.speed * timeStep + 0.5 * acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
+        pos = self.position + self.speed * timeStep + 0.5 * acceleration * timeStep**2 #s = s0 + v0*t + 0.5*a*t^2
+        if self.speed + acceleration * timeStep > self.maxSpeed:
+            pos = self.position + self.speed * timeStep + 0.5 * (self.maxSpeed - self.speed) * timeStep
+        return pos
     
     def calculateSpeed(self, acceleration, timeStep = 1.0):
         return min(self.speed + acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
@@ -298,7 +306,10 @@ class Vehicle:
             return min(self.acceleration + random.gauss(0, self.sigma), self.maxAcceleration)
         else:
             return 0'''
-        return 0
+        acc = self.maxAcceleration
+        if self.speed + acc * timeStep > self.maxSpeed:
+            acc = (self.maxSpeed - self.speed) / timeStep
+        return acc
 
     def brakeToStopAt(self, position, timeStep = 1.0):
         if self.position >= position:
@@ -341,16 +352,24 @@ class Vehicle:
         # if the past state it was not accelerating it means that the current time is
         # the first time the vehicle is restarting, so I calculate the delay to restart
         # as a sum of the preveious vehicle dela plus the current vehicle's reaction time
+        if self.id == 133: #DEBUG #print everything about the vehicle
+            print("1.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if self.pastState != self.STATE_ACCELERATING: # first time step in which the vehicle is restarting
             if self.isDeparted:
-                precCumulativeDelay = precedingVehicle.getCumulativeDelay() if precedingVehicle is not None else 0
-                self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
-                if precedingVehicle is not None: # if there is a preceding vehicle
-                    self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
-                self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
+                if self.pastState == self.STATE_WAITING_SEMAPHORE: # if the vehicle was waiting at a semaphore (so it also was the first vehicle in the queue)
+                    self.cumulativeDelay = self.reactionTimeAtSemaphore
+                    self.currentDelay = self.cumulativeDelay
+                else:
+                    precCumulativeDelay = precedingVehicle.getCumulativeDelay() if precedingVehicle is not None else 0
+                    self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
+                    if precedingVehicle is not None: # if there is a preceding vehicle
+                        self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
+                    self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
             else:
                 self.cumulativeDelay = 0
                 self.currentDelay = 0
+        if self.id == 133: #DEBUG #print everything about the vehicle
+            print("2.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         step = max (timeStep - self.currentDelay, 0)
         self.currentDelay = max (self.currentDelay - timeStep, 0)
         self.setState(self.STATE_ACCELERATING)

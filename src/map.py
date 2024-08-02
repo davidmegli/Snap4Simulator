@@ -142,6 +142,8 @@ class Road:
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
         hasClosePrecVehicle = precedingVehicle is not None and nextPos > safetyPositionFromPrecedingVehicle
         hasNoCloseVehiclesOrRedSemaphores = not hasCloseRedSem and not hasClosePrecVehicle
+        if vehicle.id == 133:
+            print("Time: %d, Vehicle 133: pos: %d, speed: %d, acc: %d, lane: %d, nextPos: %d, safetyPos: %d, hasPrec: %s, isPrecStopped: %s, hasClosePrec: %s, hasCloseRedSem: %s, hasNoClose: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, nextPos, safetyPositionFromPrecedingVehicle, hasPrecedingVehicle, isPrecedingVehicleStopped, hasClosePrecVehicle, hasCloseRedSem, hasNoCloseVehiclesOrRedSemaphores))
         if not vehicle.isGivingWay(): #if the vehicle is not giving way
             if vehicle.isStopped():
                 if hasNoCloseVehiclesOrRedSemaphores: #if the lane is free
@@ -199,6 +201,8 @@ class Road:
     def moveAndOvertakeIfPossible(self, vehicle, precedingVehicle, laneIndex, currentTime, timeStep = 1, wasMoving = True):
         hasPrecedingVehicle = precedingVehicle is not None
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
+        if currentTime == 148 and vehicle.id == 133: #debug
+            print("moveAndOvertakeIfPossible: Time: %d, Vehicle 133: pos: %d, speed: %d, acc: %d, lane: %d, wasMoving: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, wasMoving))
         if wasMoving:
             newPosition = vehicle.move(self.speedLimit, timeStep)
         else:
