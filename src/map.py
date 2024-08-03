@@ -475,6 +475,9 @@ class Road:
     def getLaneWhereVehicleIs(self, vehicle):
         return vehicle.getLane()
     
+    def getCoordinatesByPosition(self, position):
+        return self.Shape.calculateCoordinatesOnShape(position)
+    
 class Semaphore:
     STATE_GREEN = "green"
     STATE_YELLOW = "yellow"

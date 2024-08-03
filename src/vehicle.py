@@ -24,6 +24,13 @@ class VehicleState:
         self.acceleration = acceleration
         self.state = state
         self.road = road
+        self.coordX = -1
+        self.coordY = -1
+        if road is not None:
+            coord = road.getCoordinatesByPosition(position)
+            if coord is not None:
+                self.coordX = coord.getX()
+                self.coordY = coord.getY()
 
     def setTime(self, time):
         self.time = time
@@ -53,17 +60,17 @@ class VehicleState:
         return self.state
 
     def getMetrics(self):
-        return (self.time, self.position, self.speed, self.acceleration, self.state)
+        return (self.time, self.position, self.coordX, self.coordY, self.speed, self.acceleration, self.state, self.road)
 
     def getMetricsAsString(self):
         return "Time: %d, Position: %d, Speed: %d, Acceleration: %d, State: %s" % self.getMetrics()
 
     def getMetricsAsJSON(self):
         metrics = self.getMetrics()
-        return {"Time": metrics[0], "Position": metrics[1], "Speed": metrics[2], "Acceleration": metrics[3], "State": metrics[4]}
+        return {"Time": metrics[0], "Position": metrics[1], "CoordX": metrics[2], "CoordY": metrics[3], "Speed": metrics[4], "Acceleration": metrics[5], "State": metrics[6], "Road": metrics[7]}
     
     def getStateAsJSON(self):
-        return {"Time": self.time, "Position": self.position, "Speed": self.speed, "Acceleration": self.acceleration, "State": self.state, "Road": self.road}
+        return {"Time": self.time, "Position": self.position, "CoordX": self.coordX, "CoordY": self.coordY, "Speed": self.speed, "Acceleration": self.acceleration, "State": self.state, "Road": self.road.id}
 
 # Vehicle is one of the main classes, it represents a vehicle in the simulation, with its states (time, position, speed, acceleration)
 class Vehicle:
@@ -192,7 +199,7 @@ class Vehicle:
             for v in vehicles:
                 for state in v.stateHistory:
                     if state.time == t:
-                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({"VehicleID": v.id, "Position": state.position, "Speed": state.speed, "Acceleration": state.acceleration, "State": state.state, "Road": state.road})
+                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({"VehicleID": v.id, "Position": state.position, "CoordX": state.coordX, "CoordY": state.coordY, "Speed": state.speed, "Acceleration": state.acceleration, "State": state.state, "Road": state.road.id})
         with open(filename, "w") as f:
             json.dump(vehiclesHistory, f, indent = 4)
 
@@ -501,7 +508,7 @@ class Vehicle:
         if time <= pastTime:
             return
         acceleration = (self.speed - pastSpeed) / (time - pastTime) if time > pastTime and time > self.creationTime else 0
-        self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state, road.id if road is not None else None))
+        self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state, road))
 
 class Car(Vehicle):
     LENGTH = 5
