@@ -16,6 +16,59 @@ Junctions have a handleVehicle method that is called when a vehicle reaches the 
 """
 import random
 
+class Coordinates:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def getX(self):
+        return self.x
+    
+    def getY(self):
+        return self.y
+    
+    def setX(self, x):
+        self.x = x
+
+    def setY(self, y):
+        self.y = y
+
+class Shape:
+    def __init__(self, coordinates: list[Coordinates] = None):
+        self.coordinates = coordinates if coordinates else []
+    
+    def addCoordinate(self, coordinate):
+        self.coordinates.append(coordinate)
+    
+    def getCoordinates(self):
+        return self.coordinates
+    
+    def calculateCoordinatesOnShape(self, position): #returns the coordinates of the shape at the given position
+        if len(self.coordinates) <= 1:
+            return None
+        # for each couple of coordinates
+        # if the position exceeds the segment length I calculate the difference and go to next cycle
+        # otherwise I calculate the position of the point in the segment between the two points
+        for i in range(1, len(self.coordinates)):
+            x1 = self.coordinates[i-1].getX()
+            y1 = self.coordinates[i-1].getY()
+            x2 = self.coordinates[i].getX()
+            y2 = self.coordinates[i].getY()
+            length = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+            if position <= length:
+                x = x1 + (x2 - x1) * position / length
+                y = y1 + (y2 - y1) * position / length
+                return Coordinates(x, y)
+            position -= length
+        return None
+    
+    @staticmethod
+    def getShapeByCoordinates(coordinates):
+        shape = Shape()
+        for coordinate in coordinates:
+            shape.addCoordinate(coordinate)
+        return shape
+
 class Lane:
     def __init__(self, vehicles = None):
         self.vehicles = vehicles if vehicles else []
@@ -43,7 +96,7 @@ class Road:
     SAFETY_DISTANCE_TO_INTERSECTION = 10 #distance before the intersection where the vehicle is considered to be at the intersection and the next vehicle is not allowed to enter
     SAFETY_DISTANCE_AFTER_INTERSECTION = 5 #distance after the intersection where the vehicle is considered to have passed it and the next vehicle is allowed to enter
     BRAKING_DISTANCE  = 20 #distance from stop/semaphore before the vehicle starts braking
-    def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0):
+    def __init__(self, id, length, vehicleDistance = 1, speedLimit = 50/3.6, semaphores = None, startJunction = None, endJunction = None, priority = 0, shape: Shape = None):
         self.id = id
         self.length = length
         self.lanes: list[Lane] = [Lane()]
@@ -53,6 +106,12 @@ class Road:
         self.startJunction: Junction = startJunction
         self.endJunction: Junction = endJunction
         self.priority = priority
+        if shape is None:
+            self.Shape = Shape.getShapeByCoordinates([Coordinates(0,0), Coordinates(self.length,0)])
+            self.hasDefaultShape = True
+        else:
+            self.Shape = shape
+            self.hasDefaultShape = False
         #FIXME: priority should not be assigned to the lane, but to the lane reference in the junction, because the lane can be used in multiple junctions and have different priorities
 #FIXME: vehicles are added through addVehicle, then moveVehicles is called, so the vehicles instead of spawning at position 0 spawn at speed * timeStep position
 #one possible solution is to not call moveVehicles in the first cycle
@@ -65,6 +124,10 @@ class Road:
                 return pos
         return pos
     
+    def setShape(self, shape: Shape):
+        self.Shape = shape
+        self.hasDefaultShape = False
+
     def addVehicleToLane(self, vehicle, currentTime, position, laneIndex):
         precedingVehicle = self.precedingVehicle(vehicle, laneIndex)
         hasPrecedingVehicle = precedingVehicle is not None
@@ -142,8 +205,8 @@ class Road:
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
         hasClosePrecVehicle = precedingVehicle is not None and nextPos > safetyPositionFromPrecedingVehicle
         hasNoCloseVehiclesOrRedSemaphores = not hasCloseRedSem and not hasClosePrecVehicle
-        if vehicle.id == 133:
-            print("Time: %d, Vehicle 133: pos: %d, speed: %d, acc: %d, lane: %d, nextPos: %d, safetyPos: %d, hasPrec: %s, isPrecStopped: %s, hasClosePrec: %s, hasCloseRedSem: %s, hasNoClose: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, nextPos, safetyPositionFromPrecedingVehicle, hasPrecedingVehicle, isPrecedingVehicleStopped, hasClosePrecVehicle, hasCloseRedSem, hasNoCloseVehiclesOrRedSemaphores))
+        if vehicle.id == 134:
+            print("Time: %d, Vehicle 134: pos: %d, speed: %d, acc: %d, lane: %d, nextPos: %d, safetyPos: %d, hasPrec: %s, isPrecStopped: %s, hasClosePrec: %s, hasCloseRedSem: %s, hasNoClose: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, nextPos, safetyPositionFromPrecedingVehicle, hasPrecedingVehicle, isPrecedingVehicleStopped, hasClosePrecVehicle, hasCloseRedSem, hasNoCloseVehiclesOrRedSemaphores))
         if not vehicle.isGivingWay(): #if the vehicle is not giving way
             if vehicle.isStopped():
                 if hasNoCloseVehiclesOrRedSemaphores: #if the lane is free
@@ -178,6 +241,9 @@ class Road:
             ExceedingDistance = vehicle.getPosition() - self.length
             if ExceedingDistance > 0: #if the vehicle reach the end of the lane
                 self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)
+                '''newPos = vehicle.slowDown()
+                if newPos > self.length:
+                    self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)'''
 
         else: #if the vehicle is giving way
             oldPosition = vehicle.getPosition()
@@ -187,7 +253,7 @@ class Road:
             vehicles = self.getAllVehicles()
             if vehicle in vehicles and vehicle.isGivingWay():
                 vehicle.setPosition(oldPosition) #if the vehicle has to keep waiting, I reset its position to the previous one
-        vehicle.update(currentTime)
+        vehicle.update(currentTime, self)
         return True
     
     def endOfRoadHandler(self, vehicle, ExceedingDistance, currentTime, timeStep = 1):
@@ -197,12 +263,13 @@ class Road:
             else: # if there is no junction at the end of the road I assume the road is a dead end, so the vehicle is removed
                 self.removeVehicle(vehicle)
                 vehicle.setArrivalTime(currentTime)
+                vehicle.update(currentTime, self)
 
     def moveAndOvertakeIfPossible(self, vehicle, precedingVehicle, laneIndex, currentTime, timeStep = 1, wasMoving = True):
         hasPrecedingVehicle = precedingVehicle is not None
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
-        if currentTime == 148 and vehicle.id == 133: #debug
-            print("moveAndOvertakeIfPossible: Time: %d, Vehicle 133: pos: %d, speed: %d, acc: %d, lane: %d, wasMoving: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, wasMoving))
+        if currentTime == 148 and vehicle.id == 134: #debug
+            print("moveAndOvertakeIfPossible: Time: %d, Vehicle 134: pos: %d, speed: %d, acc: %d, lane: %d, wasMoving: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, wasMoving))
         if wasMoving:
             newPosition = vehicle.move(self.speedLimit, timeStep)
         else:

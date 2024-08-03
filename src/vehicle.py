@@ -12,16 +12,18 @@ I used constants to define the states a vehicle can be in
 """
 import random
 from statistics import median
+import math
 import json
 
 # VehicleState represent the state of a vehicle at a given time, including the time, position, speed, acceleration and state of the vehicle
 class VehicleState:
-    def __init__(self, time, position, speed, acceleration, state):
+    def __init__(self, time, position, speed, acceleration, state, road = None):
         self.time = time
         self.position = position
         self.speed = speed
         self.acceleration = acceleration
         self.state = state
+        self.road = road
 
     def setTime(self, time):
         self.time = time
@@ -59,6 +61,9 @@ class VehicleState:
     def getMetricsAsJSON(self):
         metrics = self.getMetrics()
         return {"Time": metrics[0], "Position": metrics[1], "Speed": metrics[2], "Acceleration": metrics[3], "State": metrics[4]}
+    
+    def getStateAsJSON(self):
+        return {"Time": self.time, "Position": self.position, "Speed": self.speed, "Acceleration": self.acceleration, "State": self.state, "Road": self.road}
 
 # Vehicle is one of the main classes, it represents a vehicle in the simulation, with its states (time, position, speed, acceleration)
 class Vehicle:
@@ -73,7 +78,9 @@ class Vehicle:
     STATE_CREATED = "created"
     STATE_ACCELERATING = "accelerating"
     STATE_BRAKING = "braking"
-    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8, reactionTimeAtSemaphore = 2.0, maxCumulativeDelayAtSemaphore = 20.0):
+    DEFAULT_TIME_STEP = 1.0
+    STATE_ARRIVED = "arrived"
+    def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8, reactionTimeAtSemaphore = 2.0, dampingFactor = 0.1):
         self.id = id
         self.length = length # vehicle length in meters
         self.initialPosition = initialPosition # initial position in meters
@@ -88,8 +95,9 @@ class Vehicle:
         self.reactionTime: float = float(reactionTime) # seconds
         self.reactionTimeAtSemaphore: float = float(reactionTimeAtSemaphore) # seconds
         self.cumulativeDelay = 0.0
-        self.maxCumulativeDelay = float(maxCumulativeDelayAtSemaphore) if maxCumulativeDelayAtSemaphore is not None else 20.0
+        self.maxCumulativeDelay = 20.0
         self.currentDelay = 0.0
+        self.dampingFactor = dampingFactor if dampingFactor is not None else 0.1 # damping factor for the cumulative delay (fattore di smorzamento)
         self.isDeparted = False
         # represents the cumulative time delay to restart the vehicle
         # e.g. at a stop the vehicles will start one after the other with a delay
@@ -167,11 +175,35 @@ class Vehicle:
         with open(filename, "w") as f:
             json.dump(Vehicle.getVehiclesMetricsAsJSON(vehicles), f, indent = 4)
 
+    @staticmethod
+    def saveVehiclesStateHistory(vehicles, filename):
+        vehiclesHistory = {"vehiclesHistory": []}
+        for v in vehicles:
+            vehiclesHistory["vehiclesHistory"].append(v.getVehicleStateHistoryAsJSON())
+        with open(filename, "w") as f:
+            json.dump(vehiclesHistory, f, indent = 4)
+
+    @staticmethod
+    def saveVehiclesStateHistoryGroupedByTime(vehicles, filename):
+        vehiclesHistory = {"vehiclesHistory": []}
+        maxTime = max([v.stateHistory[-1].time for v in vehicles])
+        for t in range(maxTime):
+            vehiclesHistory["vehiclesHistory"].append({"Time": t, "VehiclesStates": []})
+            for v in vehicles:
+                for state in v.stateHistory:
+                    if state.time == t:
+                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({"VehicleID": v.id, "Position": state.position, "Speed": state.speed, "Acceleration": state.acceleration, "State": state.state, "Road": state.road})
+        with open(filename, "w") as f:
+            json.dump(vehiclesHistory, f, indent = 4)
+
     def getVehicleStateHistory(self):
         return self.stateHistory
     
     def getVehicleStateHistoryAsJSON(self):
-        return [state.getMetricsAsJSON() for state in self.stateHistory]
+        history = {"VehicleID": self.id, "History": []}
+        for state in self.stateHistory:
+            history["History"].append(state.getStateAsJSON())
+        return history
     
     def getVehicleStateHistoryMetrics(self):
         avgSpeed = sum([state.speed for state in self.stateHistory])/len(self.stateHistory) if len(self.stateHistory) > 0 else 0
@@ -191,6 +223,10 @@ class Vehicle:
         with open(filename, "w") as f:
             json.dump(self.getVehicleStateHistoryMetricsAsJSON(), f, indent = 4)
 
+    def saveVehicleStateHistory(self, filename):
+        with open(filename, "w") as f:
+            json.dump(self.getVehicleStateHistoryAsJSON(), f, indent = 4)
+
     def wasJustCreated(self):
         return self.pastState == self.STATE_CREATED
 
@@ -203,23 +239,24 @@ class Vehicle:
         return state == self.STATE_WAITING_SEMAPHORE or state == self.STATE_WAITING_VEHICLE or state == self.STATE_WAITING_TO_ENTER or state == self.STATE_GIVING_WAY or state == self.STATE_STOPPED or (state == self.STATE_ACCELERATING and self.speed == 0)
 
     # Function called to commit the state of the vehicle at a given time
-    def update(self,currentTime):
+    def update(self,currentTime,road=None):
         if self.waitingState(self.pastState) and self.getSpeed() == 0: #or self.pastState == self.STATE_CREATED: #if the vehicle was waiting, increment the time waited
             self.timeWaited += currentTime - self.lastUpdate
         if self.isStopped() and (self.movingState(self.pastState) or self.lastUpdate == self.creationTime): #if the vehicle was moving and now is stopped, increment the number of stops
             self.numberOfStops += 1
         if self.waitingState(self.state) and self.pastState == self.STATE_CREATED: #if the vehicle was created and now is waiting, set the departure delay
             self.departDelay = currentTime - self.creationTime
-        else:
-            self.pastState = self.state #update the past state
+        
+        self.pastState = self.state #update the past state
         self.lastUpdate = currentTime #update the last update time
-        self.saveState(currentTime)
+        self.saveState(currentTime, road)
 
     def isArrived(self):
         return self.arrivalTime >= 0
     
     def setArrivalTime(self, time):
         self.arrivalTime = time
+        self.state = self.STATE_ARRIVED
     
     def getArrivalTime(self):
         return self.arrivalTime
@@ -262,6 +299,8 @@ class Vehicle:
             self.setState(self.STATE_STOPPED)
         else:
             self.setState(self.STATE_MOVING)
+            if not self.isDeparted:
+                self.departDelay = self.lastUpdate - self.creationTime + self.DEFAULT_TIME_STEP
             self.isDeparted = True
 
     def setAcceleration(self, acceleration):
@@ -275,18 +314,18 @@ class Vehicle:
     
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
-        if self.id == 133 and self.position <=5: #DEBUG #print everything about the vehicle
+        if self.id == 134 and self.position <=5: #DEBUG #print everything about the vehicle
             print("Move() step: %f [before] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if self.state == self.STATE_ACCELERATING:
             self.restart(speedLimit, step)
             return self.getPosition()
         acc = self.calculateAcceleration(step)
-        speed = min(random.gauss(self.calculateSpeed(acc, step),0),speedLimit)
+        speed = min(random.gauss(self.calculateSpeed(acc, step),self.sigma),speedLimit)
         pos = self.calculatePosition(acc, step)
         self.setPosition(pos)
         self.setSpeed(speed)
         self.setAcceleration(acc)
-        if self.id == 133 and self.position <=5: #DEBUG #print everything about the vehicle
+        if self.id == 134 and self.position <=5: #DEBUG #print everything about the vehicle
             print("Move() step: %f [after] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if lane >= 0:
             self.setLane(lane)
@@ -323,6 +362,12 @@ class Vehicle:
         self.setAcceleration(acc)
         return self.getPosition()
 
+    def slowDown(self):
+        newSpeed = self.getSpeed() / 2
+        self.setSpeed(newSpeed)
+        self.setPosition(self.getPosition() - newSpeed)
+        return self.getPosition()
+
     def stopAt(self, position):
         #TODO: everytime this func is called start to decelerate the vehicle
         self.setPosition(position)
@@ -352,8 +397,8 @@ class Vehicle:
         # if the past state it was not accelerating it means that the current time is
         # the first time the vehicle is restarting, so I calculate the delay to restart
         # as a sum of the preveious vehicle dela plus the current vehicle's reaction time
-        if self.id == 133: #DEBUG #print everything about the vehicle
-            print("1.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
+        if self.id == 134: #DEBUG #print everything about the vehicle
+            print("1.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, Past State: %s, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.pastState, self.state, self.cumulativeDelay, self.currentDelay))
         if self.pastState != self.STATE_ACCELERATING: # first time step in which the vehicle is restarting
             if self.isDeparted:
                 if self.pastState == self.STATE_WAITING_SEMAPHORE: # if the vehicle was waiting at a semaphore (so it also was the first vehicle in the queue)
@@ -361,16 +406,23 @@ class Vehicle:
                     self.currentDelay = self.cumulativeDelay
                 else:
                     precCumulativeDelay = precedingVehicle.getCumulativeDelay() if precedingVehicle is not None else 0
-                    self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
-                    if precedingVehicle is not None: # if there is a preceding vehicle
-                        self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
+                    #self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
+                    #if precedingVehicle is not None: # if there is a preceding vehicle
+                        #self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
+                    damping1 = math.exp(-self.dampingFactor * precCumulativeDelay)
+                    damping2 = 1 / math.log(self.dampingFactor * precCumulativeDelay + 2)
+                    damping3 = 1 / math.sqrt(self.dampingFactor * precCumulativeDelay + 1)
+                    self.cumulativeDelay = precCumulativeDelay + self.reactionTime * damping1
                     self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
+                    print("Vehicle %d: Reaction Time: %f, Prec Cumulative Delay: %f, Damping: %f, Cumulative Delay: %f" % (self.id, self.reactionTime, precCumulativeDelay, damping1, self.cumulativeDelay))
             else:
                 self.cumulativeDelay = 0
                 self.currentDelay = 0
-        if self.id == 133: #DEBUG #print everything about the vehicle
+        if self.id == 134: #DEBUG #print everything about the vehicle
             print("2.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         step = max (timeStep - self.currentDelay, 0)
+        if step > 0:
+            self.cumulativeDelay = 0
         self.currentDelay = max (self.currentDelay - timeStep, 0)
         self.setState(self.STATE_ACCELERATING)
         acc = self.maxAcceleration
@@ -384,7 +436,7 @@ class Vehicle:
         return self.getPosition()
 
     def getCumulativeDelay(self):
-        return min ( self.cumulativeDelay, self.maxCumulativeDelay )
+        return self.cumulativeDelay
 
     def getState(self):
         return (self.position, self.speed, self.acceleration)
@@ -443,13 +495,13 @@ class Vehicle:
         return self.lane
     
     # Function called in the update function to save the state of the vehicle at a given time in the vehicle state history
-    def saveState(self, time):
+    def saveState(self, time, road = None):
         pastTime = self.stateHistory[-1].time if len(self.stateHistory) > 0 else self.creationTime
         pastSpeed = self.stateHistory[-1].speed if len(self.stateHistory) > 0 else self.initialSpeed
         if time <= pastTime:
             return
         acceleration = (self.speed - pastSpeed) / (time - pastTime) if time > pastTime and time > self.creationTime else 0
-        self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state))
+        self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state, road.id if road is not None else None))
 
 class Car(Vehicle):
     LENGTH = 5

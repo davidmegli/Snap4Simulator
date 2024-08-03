@@ -85,12 +85,15 @@ class RoadHistory:
         for state in self.states:
             state_dict = {
                 "time": state.time,
+                "numSectors": state.numSectors,
+                "sectorLenght": self.sectorLength,
                 "DensityPerSector": [],
+                "vehiclesPerSector": [],
                 "DensityPerSectorPerLane": [],
-                "longestTrafficQueue": state.longestTrafficQueue,
-                "numSectors": state.numSectors
+                "longestTrafficQueue": state.longestTrafficQueue
             }
             for i in range(state.numSectors):
+                state_dict["vehiclesPerSector"].append(state.vehiclesPerSector[i])
                 state_dict["DensityPerSector"].append(state.densityPerSector[i]) 
                 state_dict["DensityPerSectorPerLane"].append(state.densityPerSectorPerLane[i])
             history_dict["states"].append(state_dict)
