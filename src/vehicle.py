@@ -17,6 +17,16 @@ import json
 
 # VehicleState represent the state of a vehicle at a given time, including the time, position, speed, acceleration and state of the vehicle
 class VehicleState:
+    X_COORDINATE_STRING = "CoordX"
+    Y_COORDINATE_STRING = "CoordY"
+    POSITION_STRING = "Position"
+    SPEED_STRING = "Speed"
+    ACCELERATION_STRING = "Acceleration"
+    STATE_STRING = "State"
+    ROAD_STRING = "Road"
+    TIME_STRING = "Time"
+    VEHICLE_ID_STRING = "VehicleID"
+    ROUND_DIGITS = 5
     def __init__(self, time, position, speed, acceleration, state, road = None):
         self.time = time
         self.position = position
@@ -48,29 +58,41 @@ class VehicleState:
         self.state = state
 
     def getPosition(self):
-        return self.position
+        return round(self.position, self.ROUND_DIGITS)
+    
+    def getCoordX(self):
+        return round(self.coordX, self.ROUND_DIGITS)
+    
+    def getCoordY(self):
+        return round(self.coordY, self.ROUND_DIGITS)
 
     def getSpeed(self):
-        return self.speed
+        return round(self.speed, self.ROUND_DIGITS)
 
     def getAcceleration(self):
-        return self.acceleration
-
+        return round(self.acceleration, self.ROUND_DIGITS)
+    
     def getState(self):
         return self.state
 
-    def getMetrics(self):
-        return (self.time, self.position, self.coordX, self.coordY, self.speed, self.acceleration, self.state, self.road)
+    def getVehicleState(self):
+        time = self.time
+        position = round(self.position, self.ROUND_DIGITS)
+        x = round(self.coordX, self.ROUND_DIGITS)
+        y = round(self.coordY, self.ROUND_DIGITS)
+        speed = round(self.speed, self.ROUND_DIGITS)
+        acceleration = round(self.acceleration, self.ROUND_DIGITS)
+        return (time, position, x, y, speed, acceleration, self.state, self.road)
 
     def getMetricsAsString(self):
-        return "Time: %d, Position: %d, Speed: %d, Acceleration: %d, State: %s" % self.getMetrics()
+        return "Time: %d, Position: %d, CoordX: %d, CoordY: %d, Speed: %d, Acceleration: %d, State: %s, Road: %s" % self.getVehicleState()
 
     def getMetricsAsJSON(self):
-        metrics = self.getMetrics()
-        return {"Time": metrics[0], "Position": metrics[1], "CoordX": metrics[2], "CoordY": metrics[3], "Speed": metrics[4], "Acceleration": metrics[5], "State": metrics[6], "Road": metrics[7]}
+        metrics = self.getVehicleState()
+        return {VehicleState.TIME_STRING: metrics[0], VehicleState.POSITION_STRING: metrics[1], VehicleState.X_COORDINATE_STRING: metrics[2], VehicleState.Y_COORDINATE_STRING: metrics[3], VehicleState.SPEED_STRING: metrics[4], VehicleState.ACCELERATION_STRING: metrics[5], VehicleState.STATE_STRING: metrics[6], VehicleState.ROAD_STRING: metrics[7]}
     
-    def getStateAsJSON(self):
-        return {"Time": self.time, "Position": self.position, "CoordX": self.coordX, "CoordY": self.coordY, "Speed": self.speed, "Acceleration": self.acceleration, "State": self.state, "Road": self.road.id}
+    #def getStateAsJSON(self):
+        #return {VehicleState.TIME_STRING: self.time, VehicleState.POSITION_STRING: self.position, VehicleState.X_COORDINATE_STRING: self.coordX, VehicleState.Y_COORDINATE_STRING: self.coordY, VehicleState.SPEED_STRING: self.speed, VehicleState.ACCELERATION_STRING: self.acceleration, VehicleState.STATE_STRING: self.state, VehicleState.ROAD_STRING: self.road.id}
 
 # Vehicle is one of the main classes, it represents a vehicle in the simulation, with its states (time, position, speed, acceleration)
 class Vehicle:
@@ -135,8 +157,6 @@ class Vehicle:
         stops = [v.getNumberOfStops() for v in vehicles]
         timeWaited = [v.timeWaited for v in vehicles if v.isArrived()]
         departDelays = [v.departDelay for v in vehicles if v.isArrived()]
-        #for v in vehicles:
-         #   print("Vehicle %d: %s" % (v.id, v.getMetricsAsString()))
         if len(travelTimes) == 0:
             travelTimes = [0]
         minTravelTime = min(travelTimes) if len(travelTimes) > 0 else 0
@@ -195,11 +215,11 @@ class Vehicle:
         vehiclesHistory = {"vehiclesHistory": []}
         maxTime = max([v.stateHistory[-1].time for v in vehicles])
         for t in range(maxTime):
-            vehiclesHistory["vehiclesHistory"].append({"Time": t, "VehiclesStates": []})
+            vehiclesHistory["vehiclesHistory"].append({VehicleState.TIME_STRING: t, "VehiclesStates": []})
             for v in vehicles:
                 for state in v.stateHistory:
                     if state.time == t:
-                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({"VehicleID": v.id, "Position": state.position, "CoordX": state.coordX, "CoordY": state.coordY, "Speed": state.speed, "Acceleration": state.acceleration, "State": state.state, "Road": state.road.id})
+                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({VehicleState.VEHICLE_ID_STRING: v.id, VehicleState.POSITION_STRING: state.getPosition(), VehicleState.X_COORDINATE_STRING: state.getCoordX(), VehicleState.Y_COORDINATE_STRING: state.getCoordY(), VehicleState.SPEED_STRING: state.getSpeed(), VehicleState.ACCELERATION_STRING: state.getAcceleration(), VehicleState.STATE_STRING: state.getState(), VehicleState.ROAD_STRING: state.road.id})
         with open(filename, "w") as f:
             json.dump(vehiclesHistory, f, indent = 4)
 
@@ -207,9 +227,9 @@ class Vehicle:
         return self.stateHistory
     
     def getVehicleStateHistoryAsJSON(self):
-        history = {"VehicleID": self.id, "History": []}
+        history = {VehicleState.VEHICLE_ID_STRING: self.id, "History": []}
         for state in self.stateHistory:
-            history["History"].append(state.getStateAsJSON())
+            history["History"].append(state.getMetricsAsJSON())
         return history
     
     def getVehicleStateHistoryMetrics(self):
@@ -223,7 +243,7 @@ class Vehicle:
     
     def getVehicleStateHistoryMetricsAsJSON(self):
         metrics = self.getVehicleStateHistoryMetrics()
-        return {"VehicleID": self.id, "AverageSpeed": metrics[0], "AverageAcceleration": metrics[1]}
+        return {VehicleState.VEHICLE_ID_STRING: self.id, "AverageSpeed": metrics[0], "AverageAcceleration": metrics[1]}
     
     def saveVehicleStateHistoryMetrics(self, filename):
         metrics = self.getVehicleStateHistoryMetrics()
@@ -321,8 +341,6 @@ class Vehicle:
     
     def move(self, speedLimit, timeStep = 1.0, lane = -1):
         step = timeStep # max(timeStep - self.reactionTime, 1.0)#0.01)
-        if self.id == 134 and self.position <=5: #DEBUG #print everything about the vehicle
-            print("Move() step: %f [before] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if self.state == self.STATE_ACCELERATING:
             self.restart(speedLimit, step)
             return self.getPosition()
@@ -332,8 +350,6 @@ class Vehicle:
         self.setPosition(pos)
         self.setSpeed(speed)
         self.setAcceleration(acc)
-        if self.id == 134 and self.position <=5: #DEBUG #print everything about the vehicle
-            print("Move() step: %f [after] Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (step, self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         if lane >= 0:
             self.setLane(lane)
         return self.getPosition()
@@ -404,8 +420,6 @@ class Vehicle:
         # if the past state it was not accelerating it means that the current time is
         # the first time the vehicle is restarting, so I calculate the delay to restart
         # as a sum of the preveious vehicle dela plus the current vehicle's reaction time
-        if self.id == 134: #DEBUG #print everything about the vehicle
-            print("1.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, Past State: %s, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.pastState, self.state, self.cumulativeDelay, self.currentDelay))
         if self.pastState != self.STATE_ACCELERATING: # first time step in which the vehicle is restarting
             if self.isDeparted:
                 if self.pastState == self.STATE_WAITING_SEMAPHORE: # if the vehicle was waiting at a semaphore (so it also was the first vehicle in the queue)
@@ -421,12 +435,9 @@ class Vehicle:
                     damping3 = 1 / math.sqrt(self.dampingFactor * precCumulativeDelay + 1)
                     self.cumulativeDelay = precCumulativeDelay + self.reactionTime * damping1
                     self.currentDelay = self.cumulativeDelay # I save in this attribute the updated cumulative delay
-                    print("Vehicle %d: Reaction Time: %f, Prec Cumulative Delay: %f, Damping: %f, Cumulative Delay: %f" % (self.id, self.reactionTime, precCumulativeDelay, damping1, self.cumulativeDelay))
             else:
                 self.cumulativeDelay = 0
                 self.currentDelay = 0
-        if self.id == 134: #DEBUG #print everything about the vehicle
-            print("2.Vehicle %d: Position: %f, Speed: %f, Acceleration: %f, State: %s, Cumulative Delay: %f, Current Delay: %f" % (self.id, self.position, self.speed, self.acceleration, self.state, self.cumulativeDelay, self.currentDelay))
         step = max (timeStep - self.currentDelay, 0)
         if step > 0:
             self.cumulativeDelay = 0
@@ -505,10 +516,15 @@ class Vehicle:
     def saveState(self, time, road = None):
         pastTime = self.stateHistory[-1].time if len(self.stateHistory) > 0 else self.creationTime
         pastSpeed = self.stateHistory[-1].speed if len(self.stateHistory) > 0 else self.initialSpeed
-        if time <= pastTime:
+        if time == 0: #debug
+            print("Time: %d, pastTime: %d, pastSpeed: %d" % (time, pastTime, pastSpeed))
+        if time < pastTime:
             return
         acceleration = (self.speed - pastSpeed) / (time - pastTime) if time > pastTime and time > self.creationTime else 0
         self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state, road))
+        if time == 0: #debug
+            print("Time: %d, position: %d, speed: %d, acceleration: %d, state: %s" % (time, self.position, self.speed, acceleration, self.state))
+            print("Vehicle state saved: %s" % self.stateHistory[-1].getMetricsAsString())
 
 class Car(Vehicle):
     LENGTH = 5

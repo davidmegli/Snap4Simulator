@@ -44,7 +44,7 @@ class Shape:
         return self.coordinates
     
     def calculateCoordinatesOnShape(self, position): #returns the coordinates of the shape at the given position
-        if len(self.coordinates) <= 1:
+        if len(self.coordinates) < 2:
             return None
         # for each couple of coordinates
         # if the position exceeds the segment length I calculate the difference and go to next cycle
@@ -60,7 +60,17 @@ class Shape:
                 y = y1 + (y2 - y1) * position / length
                 return Coordinates(x, y)
             position -= length
-        return None
+        return self.coordinates[-1]
+
+    def calculateLength(self): #returns the length of the shape
+        length = 0
+        for i in range(1, len(self.coordinates)):
+            x1 = self.coordinates[i-1].getX()
+            y1 = self.coordinates[i-1].getY()
+            x2 = self.coordinates[i].getX()
+            y2 = self.coordinates[i].getY()
+            length += ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+        return length
     
     @staticmethod
     def getShapeByCoordinates(coordinates):
@@ -205,8 +215,6 @@ class Road:
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
         hasClosePrecVehicle = precedingVehicle is not None and nextPos > safetyPositionFromPrecedingVehicle
         hasNoCloseVehiclesOrRedSemaphores = not hasCloseRedSem and not hasClosePrecVehicle
-        if vehicle.id == 134:
-            print("Time: %d, Vehicle 134: pos: %d, speed: %d, acc: %d, lane: %d, nextPos: %d, safetyPos: %d, hasPrec: %s, isPrecStopped: %s, hasClosePrec: %s, hasCloseRedSem: %s, hasNoClose: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, nextPos, safetyPositionFromPrecedingVehicle, hasPrecedingVehicle, isPrecedingVehicleStopped, hasClosePrecVehicle, hasCloseRedSem, hasNoCloseVehiclesOrRedSemaphores))
         if not vehicle.isGivingWay(): #if the vehicle is not giving way
             if vehicle.isStopped():
                 if hasNoCloseVehiclesOrRedSemaphores: #if the lane is free
@@ -268,8 +276,6 @@ class Road:
     def moveAndOvertakeIfPossible(self, vehicle, precedingVehicle, laneIndex, currentTime, timeStep = 1, wasMoving = True):
         hasPrecedingVehicle = precedingVehicle is not None
         safetyPositionFromPrecedingVehicle = self.safetyPositionFrom(precedingVehicle) if hasPrecedingVehicle else 0
-        if currentTime == 148 and vehicle.id == 134: #debug
-            print("moveAndOvertakeIfPossible: Time: %d, Vehicle 134: pos: %d, speed: %d, acc: %d, lane: %d, wasMoving: %s" % (currentTime, vehicle.position, vehicle.speed, vehicle.acceleration, laneIndex, wasMoving))
         if wasMoving:
             newPosition = vehicle.move(self.speedLimit, timeStep)
         else:
@@ -327,7 +333,6 @@ class Road:
     def moveVehicles(self, time, timeStep = 1):
         tmp = self.getAllVehicles()#.copy()
         for vehicle in tmp:
-            #print("Moving vehicle %d" % vehicle.id)
             self.moveVehicle(vehicle, time, timeStep)
 
     def waitForNextRoad(self, vehicle, posToWaitAt):
@@ -548,16 +553,12 @@ class Bifurcation(Junction):
 
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if vehicle in self.incomingRoad.vehicles:
-            print("Vehicle %d is at the bifurcation" % vehicle.id)
             nextRoad = self.outgoingRoad1 if random.uniform(0,1) < self.flux1 else self.outgoingRoad2
-            print("Trying to add vehicle %d to road %d at position %f" % (vehicle.id, nextRoad.id, position))
             pos = nextRoad.tryAddVehicle(vehicle, currentTime, position)
             if pos < 0: #if the vehicle cannot be added to the next road
-                print("Vehicle %d cannot be added to road %d" % (vehicle.id, nextRoad.id))
                 pos += self.incomingRoad.length
                 self.incomingRoad.waitForNextRoad(vehicle,pos)
             else:
-                print("Removing vehicle %d from road %d" % (vehicle.id, self.incomingRoad.id))
                 self.incomingRoad.removeVehicle(vehicle)
 
 class NFurcation(Junction): #1 incoming road, n outgoing roads
@@ -594,15 +595,12 @@ class NFurcation(Junction): #1 incoming road, n outgoing roads
     
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         if self.incomingRoad.hasVehicle(vehicle):
-            print("Vehicle %d is at the n-furcation" % vehicle.id)
             if self.outgoingRoads == None or self.fluxes == None:
                 if self.incomingRoad != None:
                     self.incomingRoad.removeVehicle(vehicle)
-                print("Error: n-furcation has no outgoing roads")
                 return
             #fluxes represent the probability of going to each road, given randomValue I choose the next road
             nextRoad = self.getNextRoad()
-            print("NFurcation: Vehicle %d is going from road %d to road %d" % (vehicle.id, self.incomingRoad.id, nextRoad.id))
             pos = nextRoad.tryAddVehicle(vehicle, currentTime, position)
             if pos < 0: #if the vehicle cannot be added to the next road
                 pos += self.incomingRoad.length
@@ -639,7 +637,6 @@ class Merge(Junction): #2 incoming roads, 1 outgoing road
                     pos += fromRoad.length
                     fromRoad.waitForNextRoad(vehicle,pos)
                 else:
-                    print("Merge: Vehicle %d is going from road %d to road %d" % (vehicle.id, fromRoad.id, self.outgoingRoad.id))
                     fromRoad.removeVehicle(vehicle)
             else:
                 fromRoad.giveWay(vehicle)
