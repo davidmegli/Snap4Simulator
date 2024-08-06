@@ -1,0 +1,383 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "simulation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cycles": {
+            "type": "integer"
+          },
+          "timeStep": {
+            "type": "integer"
+          },
+          "vehicleInjectionRate": {
+            "type": "integer"
+          },
+          "sectorLength": {
+            "type": "integer"
+          },
+          "log": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "cycles",
+          "timeStep",
+          "vehicleInjectionRate",
+          "sectorLength",
+          "log"
+        ]
+      },
+      "vehicles": {
+        "type": "array",
+        "items": [
+          {
+            "type": "object",
+            "properties": {
+              "length": {
+                "type": "number"
+              },
+              "initialPosition": {
+                "type": "number"
+              },
+              "initialSpeed": {
+                "type": "number"
+              },
+              "initialAcceleration": {
+                "type": "number"
+              },
+              "maxSpeed": {
+                "type": "number"
+              },
+              "maxAcceleration": {
+                "type": "number"
+              },
+              "creationTime": {
+                "type": "integer"
+              },
+              "sigma": {
+                "type": "number"
+              },
+              "reactionTime": {
+                "type": "number"
+              },
+              "reactionTimeAtSemaphore": {
+                "type": "number"
+              },
+              "dampingFactor": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "length",
+              "initialPosition",
+              "initialSpeed",
+              "initialAcceleration",
+              "maxSpeed",
+              "maxAcceleration",
+              "creationTime",
+              "sigma",
+              "reactionTime",
+              "reactionTimeAtSemaphore",
+              "dampingFactor"
+            ]
+          }
+        ]
+      },
+      "roads": {
+        "type": "array",
+        "items": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "length": {
+                "type": "integer"
+              },
+              "vehicleDistance": {
+                "type": "integer"
+              },
+              "speedLimit": {
+                "type": "integer"
+              },
+              "isStartingRoad": {
+                "type": "boolean"
+              },
+              "shape": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "length",
+              "vehicleDistance",
+              "speedLimit",
+              "isStartingRoad",
+              "shape"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "length": {
+                "type": "integer"
+              },
+              "vehicleDistance": {
+                "type": "integer"
+              },
+              "speedLimit": {
+                "type": "integer"
+              },
+              "isStartingRoad": {
+                "type": "boolean"
+              },
+              "shape": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "length",
+              "vehicleDistance",
+              "speedLimit",
+              "isStartingRoad",
+              "shape"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "length": {
+                "type": "integer"
+              },
+              "vehicleDistance": {
+                "type": "integer"
+              },
+              "speedLimit": {
+                "type": "integer"
+              },
+              "isStartingRoad": {
+                "type": "boolean"
+              },
+              "shape": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "length",
+              "vehicleDistance",
+              "speedLimit",
+              "isStartingRoad",
+              "shape"
+            ]
+          }
+        ]
+      },
+      "semaphores": {
+        "type": "array",
+        "items": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "greenLight": {
+                "type": "integer"
+              },
+              "yellowLight": {
+                "type": "integer"
+              },
+              "redLight": {
+                "type": "integer"
+              },
+              "startTime": {
+                "type": "integer"
+              },
+              "road": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "position",
+              "greenLight",
+              "yellowLight",
+              "redLight",
+              "startTime",
+              "road"
+            ]
+          }
+        ]
+      },
+      "intersections": {
+        "type": "array",
+        "items": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "inRoads": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "outRoads": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "outFluxes": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "inRoads",
+              "outRoads",
+              "outFluxes"
+            ]
+          }
+        ]
+      }
+    },
+    "required": [
+      "simulation",
+      "vehicles",
+      "roads",
+      "semaphores",
+      "intersections"
+    ]
+  }

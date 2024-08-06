@@ -1,6 +1,6 @@
 """
 @file    map.py
-@author  David Megli
+@authors  David Megli
 
 Description:
 This file contains the classes that represent the map of the simulation.
@@ -8,9 +8,6 @@ The map is composed of roads, semaphores and junctions.
 Roads have length and speed limit properties. They handle all the vehicles that are on them, stored in a list, throught the moveVehicle method.
 A Road can contain a Semaphore, in the moveVehicles is checked the presence of red semaphores and vehicles in front of the current vehicle.
 A Road can also contain a Junction, that can be a Bifurcation, NFurcation, Merge or Intersection, and handle the vehicles that reach it and the subsequent roads.
-Bifurcation = 1 incoming road, 2 outgoing roads
-NFurcation = 1 incoming road, n outgoing roads
-Merge = 2 incoming roads, 1 outgoing road
 Intersection = n incoming roads, n outgoing roads
 Junctions have a handleVehicle method that is called when a vehicle reaches the junction.
 """
@@ -98,10 +95,6 @@ class Lane:
     def getVehicleCount(self):
         return len(self.vehicles)
 
-
-#TODO: I must implement roadway/multilane with polimorphism, so I can keep calling the same methods in junctions
-#the multilane will handle its lanes and call the lane methods. I must handle multilane going into junctions and merging into a single lane
-#the junction must handle all the lanes of a multilane as different lanes
 class Road:
     SAFETY_DISTANCE_TO_INTERSECTION = 10 #distance before the intersection where the vehicle is considered to be at the intersection and the next vehicle is not allowed to enter
     SAFETY_DISTANCE_AFTER_INTERSECTION = 5 #distance after the intersection where the vehicle is considered to have passed it and the next vehicle is allowed to enter
@@ -122,9 +115,7 @@ class Road:
         else:
             self.Shape = shape
             self.hasDefaultShape = False
-        #FIXME: priority should not be assigned to the lane, but to the lane reference in the junction, because the lane can be used in multiple junctions and have different priorities
-#FIXME: vehicles are added through addVehicle, then moveVehicles is called, so the vehicles instead of spawning at position 0 spawn at speed * timeStep position
-#one possible solution is to not call moveVehicles in the first cycle
+
     def addVehicle(self, vehicle, currentTime, position = 0): #add vehicle to the road and returns the position of the vehicle
         # I check if there is a vehicle too close
         self.resetVehiclePosition(vehicle) #vehicle's position represents the position on the road, so I reset it to 0 in case it's coming from another road
@@ -249,9 +240,6 @@ class Road:
             ExceedingDistance = vehicle.getPosition() - self.length
             if ExceedingDistance > 0: #if the vehicle reach the end of the lane
                 self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)
-                '''newPos = vehicle.slowDown()
-                if newPos > self.length:
-                    self.endOfRoadHandler(vehicle, ExceedingDistance, currentTime, timeStep)'''
 
         else: #if the vehicle is giving way
             oldPosition = vehicle.getPosition()
@@ -303,7 +291,6 @@ class Road:
 
     def getNextVehicleAtPosition(self, position, laneIndex):
         vehicles = self.getVehiclesInLane(laneIndex)
-        #return the vehicle with minimum position greater than the given position
         if vehicles == None:
             return None
         nextVehicle = vehicles[0]
@@ -465,7 +452,7 @@ class Road:
     def getVehiclesInLane(self, laneIndex):
         if laneIndex >= len(self.lanes):
             return None
-        return self.lanes[laneIndex].getVehicles()#.sort(key=lambda vehicle: vehicle.position, reverse=False)
+        return self.lanes[laneIndex].getVehicles()
     
     def getAllVehicles(self):
         allVehicles = []
@@ -474,7 +461,6 @@ class Road:
         return allVehicles
     
     def appendVehicle(self, vehicle, laneIndex = 0):
-        #self.vehicles.append(vehicle)
         self.lanes[laneIndex].append(vehicle)
 
     def getLaneWhereVehicleIs(self, vehicle):
@@ -531,13 +517,11 @@ class Semaphore:
 
 
 class Junction:
-    #TODO: handleVehicle virtual function to override. Add other types of junctions, implement the handleVehicle method foreach type of junction
-    
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
         pass
 
 class Bifurcation(Junction):
-    #Deprecated: NFurcation can be used instead of Bifurcation
+    # Deprecated: use Intersection instead
     def __init__(self, id, incomingRoad, outgoingRoad1, outgoingRoad2, flux1):
         self.id = id
         self.incomingRoad = incomingRoad
@@ -562,6 +546,7 @@ class Bifurcation(Junction):
                 self.incomingRoad.removeVehicle(vehicle)
 
 class NFurcation(Junction): #1 incoming road, n outgoing roads
+    # Deprecated: use Intersection instead
     def __init__(self, id, incomingRoad = None, outgoingRoads = [], fluxes = []):
         self.id = id
         self.incomingRoad = incomingRoad
@@ -609,6 +594,7 @@ class NFurcation(Junction): #1 incoming road, n outgoing roads
                 self.incomingRoad.removeVehicle(vehicle)
 
 class Merge(Junction): #2 incoming roads, 1 outgoing road
+    # Deprecated: use Intersection instead
     def __init__(self, id, incomingRoad1, incomingRoad2, outgoingRoad):
         self.id = id
         self.incomingRoad1 = incomingRoad1
@@ -642,7 +628,6 @@ class Merge(Junction): #2 incoming roads, 1 outgoing road
                 fromRoad.giveWay(vehicle)
 
 class Intersection(Junction): #n incoming roads, n outgoing roads
-    #TODO: handle a list of fluxes for each incoming road
     def __init__(self, id, incomingRoads = [], outgoingRoads = [], outgoingFluxes = []):
         self.id = id
         self.incomingRoads = incomingRoads
@@ -675,7 +660,6 @@ class Intersection(Junction): #n incoming roads, n outgoing roads
             print("Error: intersection has no incoming roads")
             return None
         priorityRoad = None
-        #TODO: order roads by priority in the Junction and extract the first one with green light
         for road in self.incomingRoads: #get the first road that is not red
             if road.isGreen():
                 priorityRoad = road
@@ -713,20 +697,6 @@ class Intersection(Junction): #n incoming roads, n outgoing roads
         return True
     
     def outgoingRoadsOrderedByPriority(self):
-        '''#this function is O(n^2), consider using a priority queue
-        roads = self.outgoingRoads
-        orderedRoads = []
-        #i append first the road with the highest priority, then the road with the second highest priority, and so on
-        for i in range(len(self.outgoingRoads)):
-            maxPriority = roads[0].getPriority()
-            maxPriorityRoad = roads[0]
-            for road in roads:
-                if road.getPriority() < maxPriority:
-                    maxPriority = road.getPriority()
-                    maxPriorityRoad = road
-            orderedRoads.append(maxPriorityRoad)
-            roads.remove(maxPriorityRoad)
-        return orderedRoads'''
         return sorted(self.outgoingRoads, key=lambda x: x.priority, reverse=False)
     
     def handleVehicle(self, vehicle, position, currentTime, timeStep = 1):
@@ -754,13 +724,3 @@ class Intersection(Junction): #n incoming roads, n outgoing roads
                     incomingRoad.removeVehicle(vehicle)
             else:
                 incomingRoad.giveWay(vehicle)
-
-#TODO: add intersection with semaphores, add priority to lanes, add priority to vehicles, add vehicle types, add vehicle types to lanes, add vehicle types to junctions
-#TODO: Factory classes with functions to handle initialization of networks
-
-#TODO: implementa strada a doppia carreggiata: Roadway gestisce una strada a 2 carreggiata, Road diventa la carreggiata: Road > Roadway > Lane
-#class Roadway:
-#TODO: Network class to handle multiple lanes and junctions (maybe all map?), and Simulator class to handle the simulation, and update every Lane etc...
-#Simulation class will also handle the history of the entirye Network (or Map), and have a saveHistory function to save the entire history of the map in a json file
-
-

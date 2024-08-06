@@ -1,0 +1,96 @@
+{
+    "simulation": {
+        "name": "simulation",
+        "cycles": 600,
+        "timeStep": 1,
+        "vehicleInjectionRate": 1,
+        "sectorLength": 100,
+        "log": false
+    },
+    "vehicles": [
+        {
+            "length": 5.0,
+            "initialPosition": 0.0,
+            "initialSpeed": 7.0,
+            "initialAcceleration": 0.0,
+            "maxSpeed": 7.0,
+            "maxAcceleration": 4.0,
+            "creationTime": 0,
+            "sigma": 0.0,
+            "reactionTime": 1.0,
+            "reactionTimeAtSemaphore": 1.0,
+            "dampingFactor": 0.18
+        } ],
+    "roads": [
+        {
+            "id": 1,
+            "length": 1000,
+            "vehicleDistance": 1,
+            "speedLimit": 7,
+            "isStartingRoad": true,
+            "shape": [
+                {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                {
+                    "x": 1000.0,
+                    "y": 0.0
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "length": 500,
+            "vehicleDistance": 1,
+            "speedLimit": 7,
+            "isStartingRoad": false,
+            "shape": [
+                {
+                    "x": 1000.0,
+                    "y": 0.0
+                },
+                {
+                    "x": 1353.55339,
+                    "y": 353.55339
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "length": 500,
+            "vehicleDistance": 1,
+            "speedLimit": 7,
+            "isStartingRoad": false,
+            "shape": [
+                {
+                    "x": 1000.0,
+                    "y": 0.0
+                },
+                {
+                    "x": 1353.55339,
+                    "y": -353.55339
+                }
+            ]
+        }
+    ],
+    "semaphores": [
+        {
+            "id": 1,
+            "position": 800,
+            "greenLight": 40,
+            "yellowLight": 0,
+            "redLight": 20,
+            "startTime": 0,
+            "road": 1
+        }
+    ],
+    "intersections": [
+        {
+            "id": 1,
+            "inRoads": [1],
+            "outRoads": [2,3],
+            "outFluxes": [0.5,0.5]
+        }
+    ]
+}

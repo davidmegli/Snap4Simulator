@@ -1,10 +1,10 @@
 """
 @file    vehicle.py
-@author  David Megli
+@authors  David Megli
 
 Desctiption:
 This file the classes to handle vehicles in the simulation.
-Class Vehicle handles the state of the vehicle (position on the road, speed, acceleration) and its movement.
+Class Vehicle handles the state of the vehicle (position on the road, speed, acceleration, coordinates) and its movement.
 The class has methods to calculate the position, speed and acceleration of the vehicle in the next time step (default time step is 1 second).
 The class has methods to stop the vehicle, move it to a given position, restart it, follow another vehicle at a given distance, stop at a given position,
 stop at a semaphore, stop at a vehicle, give way to another vehicle, and restart the vehicle.
@@ -84,16 +84,13 @@ class VehicleState:
         acceleration = round(self.acceleration, self.ROUND_DIGITS)
         return (time, position, x, y, speed, acceleration, self.state, self.road)
 
-    def getMetricsAsString(self):
+    def getStateAsString(self):
         return "Time: %d, Position: %d, CoordX: %d, CoordY: %d, Speed: %d, Acceleration: %d, State: %s, Road: %s" % self.getVehicleState()
 
-    def getMetricsAsJSON(self):
+    def getStateAsJSON(self):
         metrics = self.getVehicleState()
         return {VehicleState.TIME_STRING: metrics[0], VehicleState.POSITION_STRING: metrics[1], VehicleState.X_COORDINATE_STRING: metrics[2], VehicleState.Y_COORDINATE_STRING: metrics[3], VehicleState.SPEED_STRING: metrics[4], VehicleState.ACCELERATION_STRING: metrics[5], VehicleState.STATE_STRING: metrics[6], VehicleState.ROAD_STRING: metrics[7]}
     
-    #def getStateAsJSON(self):
-        #return {VehicleState.TIME_STRING: self.time, VehicleState.POSITION_STRING: self.position, VehicleState.X_COORDINATE_STRING: self.coordX, VehicleState.Y_COORDINATE_STRING: self.coordY, VehicleState.SPEED_STRING: self.speed, VehicleState.ACCELERATION_STRING: self.acceleration, VehicleState.STATE_STRING: self.state, VehicleState.ROAD_STRING: self.road.id}
-
 # Vehicle is one of the main classes, it represents a vehicle in the simulation, with its states (time, position, speed, acceleration)
 class Vehicle:
     # Constants that represent the states a vehicle can be in
@@ -130,7 +127,6 @@ class Vehicle:
         self.isDeparted = False
         # represents the cumulative time delay to restart the vehicle
         # e.g. at a stop the vehicles will start one after the other with a delay
-        #self.realReactionTime = min(random.gauss(reactionTime, 0.2),1)
         self.setPosition(initialPosition)
         self.setState(self.STATE_CREATED)
         self.setSpeed(initialSpeed) #m/s
@@ -142,13 +138,6 @@ class Vehicle:
         self.departDelay = 0.0
         self.lane = 0
         self.stateHistory: list[VehicleState] = []
-        #TODO: add time waited at semaphores, time waited at junctions, time waited at vehicles, time waited at merges, time waited at bifurcations
-        #TODO: increment time waited and number of stops each time the vehicle stops, i.e. each time the speed was >0 and is set to 0
-        #be careful, sometimes in moveVehicle the vehicle is moved just to check if the next position would collide, in those case it shouldn't count as stop, since
-        #the vehicle was already stopped. Maybe use the lastUpdate attribute to check if the vehicle was already stopped in the previous cycle?
-        #or just count the time stopped
-
-    #crea funzione che restituisce true se stato è uno di quelli che aspetta
 
     # Static method that returns the metrics of a given list of vehicles
     @staticmethod
@@ -229,7 +218,7 @@ class Vehicle:
     def getVehicleStateHistoryAsJSON(self):
         history = {VehicleState.VEHICLE_ID_STRING: self.id, "History": []}
         for state in self.stateHistory:
-            history["History"].append(state.getMetricsAsJSON())
+            history["History"].append(state.getStateAsJSON())
         return history
     
     def getVehicleStateHistoryMetrics(self):
@@ -364,10 +353,6 @@ class Vehicle:
         return min(self.speed + acceleration * timeStep, self.maxSpeed) #v = v0 + a*t
     
     def calculateAcceleration(self, timeStep = 1.0):
-        '''if random.uniform(0, 1) < 0.5:
-            return min(self.acceleration + random.gauss(0, self.sigma), self.maxAcceleration)
-        else:
-            return 0'''
         acc = self.maxAcceleration
         if self.speed + acc * timeStep > self.maxSpeed:
             acc = (self.maxSpeed - self.speed) / timeStep
@@ -392,7 +377,6 @@ class Vehicle:
         return self.getPosition()
 
     def stopAt(self, position):
-        #TODO: everytime this func is called start to decelerate the vehicle
         self.setPosition(position)
         self.stop()
 
@@ -427,9 +411,6 @@ class Vehicle:
                     self.currentDelay = self.cumulativeDelay
                 else:
                     precCumulativeDelay = precedingVehicle.getCumulativeDelay() if precedingVehicle is not None else 0
-                    #self.cumulativeDelay = self.reactionTime * ((self.maxCumulativeDelay - precCumulativeDelay)/self.maxCumulativeDelay) if self.maxCumulativeDelay != 0 else self.reactionTime # in any case I must add the reaction time to the cumulative delay
-                    #if precedingVehicle is not None: # if there is a preceding vehicle
-                        #self.cumulativeDelay += precCumulativeDelay # I also add its cumulative delay
                     damping1 = math.exp(-self.dampingFactor * precCumulativeDelay)
                     damping2 = 1 / math.log(self.dampingFactor * precCumulativeDelay + 2)
                     damping3 = 1 / math.sqrt(self.dampingFactor * precCumulativeDelay + 1)
@@ -524,40 +505,44 @@ class Vehicle:
         self.stateHistory.append(VehicleState(time, self.position, self.speed, acceleration, self.state, road))
         if time == 0: #debug
             print("Time: %d, position: %d, speed: %d, acceleration: %d, state: %s" % (time, self.position, self.speed, acceleration, self.state))
-            print("Vehicle state saved: %s" % self.stateHistory[-1].getMetricsAsString())
+            print("Vehicle state saved: %s" % self.stateHistory[-1].getStateAsString())
 
 class Car(Vehicle):
     LENGTH = 5
     MAX_SPEED = 41.67 #m/s = 150 km/h
     MAX_ACCELERATION = 0.8 #m/s^2
     REACTION_TIME = 1
-    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
-        super().__init__(id, Car.LENGTH, initialPosition, initialSpeed, 0, Car.MAX_SPEED, Car.MAX_ACCELERATION, creationTime, sigma, reactionTime)
+    REACTION_TIME_SEMAPHORE = 2
+    DAMPING_FACTOR = 0.1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME, reactionTimeAtSemaphore = REACTION_TIME_SEMAPHORE, dampingFactor = DAMPING_FACTOR):
+        super().__init__(id, Car.LENGTH, initialPosition, initialSpeed, 0, Car.MAX_SPEED, Car.MAX_ACCELERATION, creationTime, sigma, reactionTime, reactionTimeAtSemaphore, dampingFactor)
 
 class Bus(Vehicle):
     LENGTH = 12
     MAX_SPEED = 33.33 #m/s = 120 km/h
     MAX_ACCELERATION = 0.6 #m/s^2
     REACTION_TIME = 1
-    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
-        super().__init__(id, Bus.LENGTH, initialPosition, initialSpeed, 0, Bus.MAX_SPEED, Bus.MAX_ACCELERATION, creationTime, sigma, reactionTime)
+    REACTION_TIME_SEMAPHORE = 2
+    DAMPING_FACTOR = 0.1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME, reactionTimeAtSemaphore = REACTION_TIME_SEMAPHORE, dampingFactor = DAMPING_FACTOR):
+        super().__init__(id, Bus.LENGTH, initialPosition, initialSpeed, 0, Bus.MAX_SPEED, Bus.MAX_ACCELERATION, creationTime, sigma, reactionTime, reactionTimeAtSemaphore, dampingFactor)
 
-class Bicicle(Vehicle):
+class Bicycle(Vehicle):
     LENGTH = 2
     MAX_SPEED = 13.89 #m/s = 50 km/h
-    MAX_ACCELERATION = 0.4 #m/s^2
+    MAX_ACCELERATION = 0.4
+    REACTION_TIME_SEMAPHORE = 2 
     REACTION_TIME = 1
-    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
-        super().__init__(id, Bicicle.LENGTH, initialPosition, initialSpeed, 0, Bicicle.MAX_SPEED, Bicicle.MAX_ACCELERATION, creationTime, sigma, reactionTime)
+    DAMPING_FACTOR = 0.1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME, reactionTimeAtSemaphore = REACTION_TIME_SEMAPHORE, dampingFactor = DAMPING_FACTOR):
+        super().__init__(id, Bicycle.LENGTH, initialPosition, initialSpeed, 0, Bicycle.MAX_SPEED, Bicycle.MAX_ACCELERATION, creationTime, sigma, reactionTime, reactionTimeAtSemaphore, dampingFactor)
 
 class Pedestrian(Vehicle):
     LENGTH = 1
     MAX_SPEED = 2.78 #m/s = 10 km/h
     MAX_ACCELERATION = 0.2 #m/s^2
     REACTION_TIME = 1
-    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME):
-        super().__init__(id, Pedestrian.LENGTH, initialPosition, initialSpeed, 0, Pedestrian.MAX_SPEED, Pedestrian.MAX_ACCELERATION, creationTime, sigma, reactionTime)
-
-
-        
-#TODO: add counters to count time waited (stopped, speed=0), time waited at semaphores (in class Vehicle or in VehicleState in data.py?)
+    REACTION_TIME_SEMAPHORE = 2
+    DAMPING_FACTOR = 0.1
+    def __init__(self, id, initialSpeed, initialPosition, creationTime = 0, sigma = 0.0, reactionTime = REACTION_TIME, reactionTimeAtSemaphore = REACTION_TIME_SEMAPHORE, dampingFactor = DAMPING_FACTOR):
+        super().__init__(id, Pedestrian.LENGTH, initialPosition, initialSpeed, 0, Pedestrian.MAX_SPEED, Pedestrian.MAX_ACCELERATION, creationTime, sigma, reactionTime, reactionTimeAtSemaphore, dampingFactor)

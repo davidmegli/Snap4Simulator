@@ -1,6 +1,6 @@
 """
 @file    data.py
-@author  David Megli
+@authors  David Megli
 
 Description:
 This file contains the classes to handle the history of the map, saving the state of the roads at different times.
