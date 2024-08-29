@@ -9,8 +9,6 @@ The classes calculate the number of vehicles and density for each sector of a Ro
 from map import Road
 import json
 
-#TODO: MapState and MapHistory to keep track of the entire map, with saveHistory function to save the entire history of the map in a json file
-
 class RoadState:
     def __init__(self, time, vehiclesPerSector, densityPerSector, densityPerSectorPerLane, numSectors, minimumDensityToConsiderTrafficQueue = 0.8):
         self.time = time
@@ -20,7 +18,6 @@ class RoadState:
         self.longestTrafficQueue = 0
         self.numSectors = numSectors
         self.minDensityToConsiderTrafficQueue = minimumDensityToConsiderTrafficQueue
-        #TODO: extract the longest traffic queue as count of consecutive sectors with density > 0.8
         self.calculateLongestTrafficQueue()
 
     def calculateLongestTrafficQueue(self):

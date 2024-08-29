@@ -6,7 +6,6 @@ from matplotlib.animation import FuncAnimation
 import json
 from vehicle import Vehicle, VehicleState
 
-#filename = "../output/4_merge_sem_sim_vehicles_metrics_600.json"
 def parse_coords(filename):
     # I parse the file simulation.json to get the points to plot
     # In the json, for each time there is a number of vehicles, each with its coordinates

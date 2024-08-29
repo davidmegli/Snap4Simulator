@@ -712,7 +712,6 @@ class Intersection(Junction): #n incoming roads, n outgoing roads
                 return
             #fluxes represent the probability of going to each road, given randomValue I choose the next road
             nextRoad = self.getNextRoad()
-            #priorityRoad = self.getPriorityRoad()
 
             canGo = self.canGo(incomingRoad,currentTime,position)
             if canGo: #if the vehicle can go (i.e there is no vehicle with higher priority that has green light and outgoing vehicles)

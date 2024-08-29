@@ -257,6 +257,7 @@ dampingFactor = 0.18 # fattore di smorzamento per il calcolo dei tempi di reazio
 sigma = 0.00
 vehicleDistance = 1.0
 
+#The following functions are used to simulate the scenarios described in the report without using the JSON configuration file
 def single_road():
     simulationName = "1_single_road_sim"
     simulation = Simulation(simulationCycles, timeStep, injectingRateForRoad, roadLength / sectorsPerRoad, simulationName)
@@ -366,6 +367,7 @@ def road_different_speeds():
     simulation.addVehicleType(vehicleLength, startingPosition, minVehicleSpeed, 0, maxVehicleSpeed, maxAcceleration, 0, sigma, reactionTime, reactionTimeAtSemaphore, dampingFactor)
     simulation.simulate()
 
+#This is the main function that reads the JSON configuration file and runs the simulation
 def main(argv):
     if len(argv) < 1:
         print("Please provide the filename of a JSON file with the simulation configuration")
