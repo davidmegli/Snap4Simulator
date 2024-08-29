@@ -106,6 +106,8 @@ class Vehicle:
     STATE_BRAKING = "braking"
     DEFAULT_TIME_STEP = 1.0
     STATE_ARRIVED = "arrived"
+    VEHICLE_HISTORY_STRING = "vehiclesHistory"
+    VEHICLE_STATES_STRING = "VehiclesStates"
     def __init__(self, id, length, initialPosition, initialSpeed, initialAcceleration, maxSpeed, maxAcceleration, creationTime = 0, sigma = 0.0, reactionTime = 0.8, reactionTimeAtSemaphore = 2.0, dampingFactor = 0.1):
         self.id = id
         self.length = length # vehicle length in meters
@@ -193,22 +195,22 @@ class Vehicle:
 
     @staticmethod
     def saveVehiclesStateHistory(vehicles, filename):
-        vehiclesHistory = {"vehiclesHistory": []}
+        vehiclesHistory = {Vehicle.VEHICLE_HISTORY_STRING: []}
         for v in vehicles:
-            vehiclesHistory["vehiclesHistory"].append(v.getVehicleStateHistoryAsJSON())
+            vehiclesHistory[Vehicle.VEHICLE_HISTORY_STRING].append(v.getVehicleStateHistoryAsJSON())
         with open(filename, "w") as f:
             json.dump(vehiclesHistory, f, indent = 4)
 
     @staticmethod
     def saveVehiclesStateHistoryGroupedByTime(vehicles, filename):
-        vehiclesHistory = {"vehiclesHistory": []}
+        vehiclesHistory = {Vehicle.VEHICLE_HISTORY_STRING: []}
         maxTime = max([v.stateHistory[-1].time for v in vehicles])
         for t in range(maxTime):
-            vehiclesHistory["vehiclesHistory"].append({VehicleState.TIME_STRING: t, "VehiclesStates": []})
+            vehiclesHistory[Vehicle.VEHICLE_HISTORY_STRING].append({VehicleState.TIME_STRING: t, Vehicle.VEHICLE_STATES_STRING: []})
             for v in vehicles:
                 for state in v.stateHistory:
                     if state.time == t:
-                        vehiclesHistory["vehiclesHistory"][-1]["VehiclesStates"].append({VehicleState.VEHICLE_ID_STRING: v.id, VehicleState.POSITION_STRING: state.getPosition(), VehicleState.X_COORDINATE_STRING: state.getCoordX(), VehicleState.Y_COORDINATE_STRING: state.getCoordY(), VehicleState.SPEED_STRING: state.getSpeed(), VehicleState.ACCELERATION_STRING: state.getAcceleration(), VehicleState.STATE_STRING: state.getState(), VehicleState.ROAD_STRING: state.road.id})
+                        vehiclesHistory[Vehicle.VEHICLE_HISTORY_STRING][-1][Vehicle.VEHICLE_STATES_STRING].append({VehicleState.VEHICLE_ID_STRING: v.id, VehicleState.POSITION_STRING: state.getPosition(), VehicleState.X_COORDINATE_STRING: state.getCoordX(), VehicleState.Y_COORDINATE_STRING: state.getCoordY(), VehicleState.SPEED_STRING: state.getSpeed(), VehicleState.ACCELERATION_STRING: state.getAcceleration(), VehicleState.STATE_STRING: state.getState(), VehicleState.ROAD_STRING: state.road.id})
         with open(filename, "w") as f:
             json.dump(vehiclesHistory, f, indent = 4)
 

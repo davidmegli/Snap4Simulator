@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 import json
+from vehicle import Vehicle, VehicleState
 
 #filename = "../output/4_merge_sem_sim_vehicles_metrics_600.json"
 def parse_coords(filename):
@@ -13,12 +14,12 @@ def parse_coords(filename):
     with open(filename, 'r') as f:
         data = json.load(f)
     coords = {}
-    for v in data["vehiclesHistory"]:
-        time = v["Time"]
+    for v in data[Vehicle.VEHICLE_HISTORY_STRING]:
+        time = v[VehicleState.TIME_STRING]
         if time not in coords:
             coords[time] = []
-        for veh in v["VehiclesStates"]:
-            coords[time].append((veh["CoordX"], veh["CoordY"]))
+        for veh in v[Vehicle.VEHICLE_STATES_STRING]:
+            coords[time].append((veh[VehicleState.X_COORDINATE_STRING], veh[VehicleState.Y_COORDINATE_STRING]))
     return coords
 
 def get_min_max_coords(coords):
