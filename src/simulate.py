@@ -3,7 +3,7 @@
 @authors  David Megli
 
 Description:
-This file simulates the movement of vehicles in a road
+This file simulates the movement of vehicles in a road, receiving a JSON file with the configuration of the simulation.
 """
 import json
 import jsonschema

@@ -1,5 +1,11 @@
+'''
+@file    plot.py
+@authors  David Megli
 
-import sys
+Description:
+This file contains the code to plot the vehicles in the simulation.json file.
+'''
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
