@@ -122,9 +122,10 @@ class Simulation:
         vehMetricsFile = "../output/%s_vehicles_metrics_%i.txt" % (self.simulationName, self.simulationCycles)
         roadsMetricsJsonFile = "../output/%s_road_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         mapHistoryFile = "../output/%s_map_history_%i.json" % (self.simulationName, self.simulationCycles)
-        f = open(vehMetricsFile, "w+")
-        f2 = open(output, "w+")
-        #f3 = open(vehHistoryMetricsFile, "w+")
+        if self.log:
+            f = open(vehMetricsFile, "w+")
+            f2 = open(output, "w+")
+            #f3 = open(vehHistoryMetricsFile, "w+")
         self.history = MapHistory(self.roads, self.sectorLength)
         for i in range(self.simulationCycles):
             time = i * self.timeStep
@@ -168,11 +169,12 @@ class Simulation:
         self.history.saveHistory(mapHistoryFile)
         self.history.saveMetrics(roadsMetricsJsonFile)
         Vehicle.saveVehiclesStateHistoryGroupedByTime(self.vehicles, vehHistoryMetricsFile)
-        abspath = os.path.abspath(output)
+        abspath = os.path.abspath(vehHistoryMetricsFile)
         print("Data saved to %s" % abspath)
-        f.close()
-        f2.close()
-        #f3.close()
+        if self.log:
+            f.close()
+            f2.close()
+            #f3.close()
 
     def getSimulationFromJSON(filename):
         if not Path(filename).is_file():
