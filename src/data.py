@@ -71,7 +71,7 @@ class RoadHistory:
 
     def saveHistory(self, filename):
         history_dict = self.getHistoryDict()
-        with open(filename, "w") as f:
+        with open(filename, "w+") as f:
             json.dump(history_dict, f, indent = 4)
 
     def getHistoryDict(self):
@@ -115,7 +115,7 @@ class RoadHistory:
     
     def saveMetrics(self, filename):
         metrics = self.getMetrics()
-        with open(filename, "w") as f:
+        with open(filename, "w+") as f:
             json.dump(metrics, f, indent = 4)
 
 class MapHistory:
@@ -131,7 +131,7 @@ class MapHistory:
 
     def saveHistory(self, filename):
         history_dict = self.getHistoryDict()
-        with open(filename, "w") as f:
+        with open(filename, "w+") as f:
             json.dump(history_dict, f, indent = 4)
 
     def getHistoryDict(self):
@@ -152,5 +152,5 @@ class MapHistory:
 
     def saveMetrics(self, filename):
         metrics = self.getMetrics()
-        with open(filename, "w") as f:
+        with open(filename, "w+") as f:
             json.dump(metrics, f, indent = 4)

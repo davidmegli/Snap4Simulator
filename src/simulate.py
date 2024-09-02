@@ -120,9 +120,9 @@ class Simulation:
         vehMetricsFile = "../output/%s_vehicles_metrics_%i.txt" % (self.simulationName, self.simulationCycles)
         roadsMetricsJsonFile = "../output/%s_road_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         mapHistoryFile = "../output/%s_map_history_%i.json" % (self.simulationName, self.simulationCycles)
-        f = open(vehMetricsFile, "w")
-        f2 = open(output, "w")
-        #f3 = open(vehHistoryMetricsFile, "w")
+        f = open(vehMetricsFile, "w+")
+        f2 = open(output, "w+")
+        #f3 = open(vehHistoryMetricsFile, "w+")
         self.history = MapHistory(self.roads, self.sectorLength)
         for i in range(self.simulationCycles):
             time = i * self.timeStep
