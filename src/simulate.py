@@ -14,6 +14,7 @@ from data import RoadHistory, MapHistory
 import random
 import time as t
 from pathlib import Path
+import os
 
 class Simulation:
     # JSON keys:
@@ -115,14 +116,15 @@ class Simulation:
             road.moveVehicles(time, self.timeStep)
 
     def simulate(self):
+        os.makedirs("../output", exist_ok=True)
         output = "../output/%s_simulation_output_%i.txt" % (self.simulationName, self.simulationCycles)
         vehHistoryMetricsFile = "../output/%s_vehicles_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         vehMetricsFile = "../output/%s_vehicles_metrics_%i.txt" % (self.simulationName, self.simulationCycles)
         roadsMetricsJsonFile = "../output/%s_road_metrics_%i.json" % (self.simulationName, self.simulationCycles)
         mapHistoryFile = "../output/%s_map_history_%i.json" % (self.simulationName, self.simulationCycles)
-        f = open(vehMetricsFile, "w+", create_parents=True)
-        f2 = open(output, "w+", create_parents=True)
-        #f3 = open(vehHistoryMetricsFile, "w+", create_parents=True)
+        f = open(vehMetricsFile, "w+")
+        f2 = open(output, "w+")
+        #f3 = open(vehHistoryMetricsFile, "w+")
         self.history = MapHistory(self.roads, self.sectorLength)
         for i in range(self.simulationCycles):
             time = i * self.timeStep
