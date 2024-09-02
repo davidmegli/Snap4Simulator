@@ -11,6 +11,7 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 import json
 from vehicle import Vehicle, VehicleState
+import sys
 
 def parse_coords(filename):
     # I parse the file simulation.json to get the points to plot
