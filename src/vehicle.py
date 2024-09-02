@@ -190,7 +190,7 @@ class Vehicle:
     @staticmethod
     def saveVehiclesMetrics(vehicles, filename):
         metrics = Vehicle.getVehiclesMetrics(vehicles)
-        with open(filename, "w+") as f:
+        with open(filename, "w+", create_parents=True) as f:
             json.dump(Vehicle.getVehiclesMetricsAsJSON(vehicles), f, indent = 4)
 
     @staticmethod
@@ -198,7 +198,7 @@ class Vehicle:
         vehiclesHistory = {Vehicle.VEHICLE_HISTORY_STRING: []}
         for v in vehicles:
             vehiclesHistory[Vehicle.VEHICLE_HISTORY_STRING].append(v.getVehicleStateHistoryAsJSON())
-        with open(filename, "w+") as f:
+        with open(filename, "w+", create_parents=True) as f:
             json.dump(vehiclesHistory, f, indent = 4)
 
     @staticmethod
@@ -211,7 +211,7 @@ class Vehicle:
                 for state in v.stateHistory:
                     if state.time == t:
                         vehiclesHistory[Vehicle.VEHICLE_HISTORY_STRING][-1][Vehicle.VEHICLE_STATES_STRING].append({VehicleState.VEHICLE_ID_STRING: v.id, VehicleState.POSITION_STRING: state.getPosition(), VehicleState.X_COORDINATE_STRING: state.getCoordX(), VehicleState.Y_COORDINATE_STRING: state.getCoordY(), VehicleState.SPEED_STRING: state.getSpeed(), VehicleState.ACCELERATION_STRING: state.getAcceleration(), VehicleState.STATE_STRING: state.getState(), VehicleState.ROAD_STRING: state.road.id})
-        with open(filename, "w+") as f:
+        with open(filename, "w+", create_parents=True) as f:
             json.dump(vehiclesHistory, f, indent = 4)
 
     def getVehicleStateHistory(self):
@@ -238,11 +238,11 @@ class Vehicle:
     
     def saveVehicleStateHistoryMetrics(self, filename):
         metrics = self.getVehicleStateHistoryMetrics()
-        with open(filename, "w+") as f:
+        with open(filename, "w+", create_parents=True) as f:
             json.dump(self.getVehicleStateHistoryMetricsAsJSON(), f, indent = 4)
 
     def saveVehicleStateHistory(self, filename):
-        with open(filename, "w+") as f:
+        with open(filename, "w+", create_parents=True) as f:
             json.dump(self.getVehicleStateHistoryAsJSON(), f, indent = 4)
 
     def wasJustCreated(self):
