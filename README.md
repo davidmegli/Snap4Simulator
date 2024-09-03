@@ -50,11 +50,11 @@ Complete instructions are provided in the pdf file inside the "Documents" folder
 You can run the 6 test cases described in the report by running simulate_tests.py in one of the following 2 ways:
 1. Pass the test number as a parameter (integer between 1 and 6):
 ```bash
-py simulate_tests.py <test_number>
+python simulate_tests.py <test_number>
 ```
 2. Run the script without passing parameters, and choose the test to run by following the command line instructions:
 ```bash
-py simulate_tests.py
+python simulate_tests.py
 ```
 
 The output files are saved by the program in the "/Snap4Simulator/output" folder
